@@ -92,7 +92,8 @@ class Limits(object):
             {analysis} : uncorrelate analysis
             {channel}  : uncorrelate channel
         The supported modes are:
-            'lnN' : log normal uncertainty shape
+            'lnN'  : log normal uncertainty shape
+            'gmN X': gamma function uncertainty shape
         The values are set with the 'systematics' arguments. They are dictionaries with the form:
             systematics = {
                (processes,eras,analyses,channels) : value,
@@ -273,7 +274,7 @@ class Limits(object):
                     for channel in channels:
                         for process in processesOrdered:
                             key = (era,analysis,channel,process)
-                            thisRow += ['{0:<10.4g}'.format(combinedSysts[syst]['systs'][key]) if key in combinedSysts[syst]['systs'] else '-']
+                            thisRow += ['{0:<10.4g}'.format(combinedSysts[syst]['systs'][key]) if key in combinedSysts[syst]['systs'] and combinedSysts[syst]['systs'][key]!=1 else '-']
             systRows += [thisRow]
 
         kmax = len(systRows)

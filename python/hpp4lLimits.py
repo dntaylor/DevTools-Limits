@@ -6,131 +6,89 @@ import numpy as np
 import math
 
 from DevTools.Limits.Limits import Limits
-from DevTools.Limits.utilities import readCount
-from DevTools.Utilities.utilities import python_mkdir
+from DevTools.Utilities.utilities import *
+from DevTools.Plotter.Counter import Counter
+from DevTools.Plotter.higgsUtilities import *
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-class Scales(object):
-    def __init__(self, br_ee, br_em, br_et, br_mm, br_mt, br_tt):
-        self.a_3l = np.array([br_ee, br_em, br_et, br_mm, br_mt, br_tt], dtype=float)
-        self.m_4l = np.outer(self.a_3l, self.a_3l)
-        self.index = {"ee": 0, "em": 1, "et": 2, "mm": 3, "mt": 4, "tt": 5}
-    def scale_Hpp4l(self, hpp, hmm):
-        i = self.index[hpp]
-        j = self.index[hmm]
-        return self.m_4l[i,j] * 36.0
-    def scale_Hpp3l(self, hpp, hm='a'):
-        i = self.index[hpp]
-        scale = 9./2
-        if hpp in ['ee','mm','tt']: scale = 9.
-        return self.a_3l[i] * scale
 
-masses = [200,300,400,500,600,700,800,900,1000]
+# define cards to create
 modes = ['ee100','em100','et100','mm100','mt100','tt100','BP1','BP2','BP3','BP4']
-backgrounds = ['ZZ','Z','TT','TTV','VVV','WZ']
+masses = [200,300,400,500,600,700,800,900,1000]
 
-#masses = [200]
-#modes = ['ee100']
-#backgrounds = ['ZZ','TTV']
+cats = getCategories('Hpp4l')
+catLabels = getCategoryLabels('Hpp4l')
+subCatChannels = getSubCategories('Hpp4l')
+subCatLabels = getSubCategoryLabels('Hpp4l')
+chans = getChannels('Hpp4l')
+chanLabels = getChannelLabels('Hpp4l')
+genRecoMap = getGenRecoChannelMap('Hpp4l')
+masses = [200,300,400,500,600,700,800,900,1000]
+sigMap = getSigMap('Hpp4l')
 
-sigMap = {
-    'WZ'  : [
-             'WZTo3LNu_TuneCUETP8M1_13TeV-powheg-pythia8',
-             'WZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8',
-             #'WZTo1L3Nu_13TeV_amcatnloFXFX_madspin_pythia8',
-             #'WZTo1L1Nu2Q_13TeV_amcatnloFXFX_madspin_pythia8',
-            ],
-    'ZZ'  : [
-             'ZZTo4L_13TeV_powheg_pythia8',
-             'GluGluToContinToZZTo2e2mu_13TeV_MCFM701_pythia8',
-             'GluGluToContinToZZTo2mu2tau_13TeV_MCFM701_pythia8',
-             'GluGluToContinToZZTo4e_13TeV_MCFM701_pythia8',
-             'GluGluToContinToZZTo4mu_13TeV_MCFM701_pythia8',
-             'GluGluToContinToZZTo4tau_13TeV_MCFM701_pythia8',
-             'ZZTo2L2Nu_13TeV_powheg_pythia8',
-             'ZZTo2L2Q_13TeV_amcatnloFXFX_madspin_pythia8',
-            ],
-    'VVV' : [
-             'WZZ_TuneCUETP8M1_13TeV-amcatnlo-pythia8',
-             'WWG_TuneCUETP8M1_13TeV-amcatnlo-pythia8',
-            ],
-    'TTV' : [
-             #'TTWJetsToLNu_TuneCUETP8M1_13TeV-amcatnloFXFX-madspin-pythia8',
-             #'TTZToLLNuNu_M-10_TuneCUETP8M1_13TeV-amcatnlo-pythia8',
-             'ttWJets_13TeV_madgraphMLM',
-             'ttZJets_13TeV_madgraphMLM',
-            ],
-    'WW'  : [
-             'WWTo2L2Nu_13TeV-powheg',
-             #'WWToLNuQQ_13TeV-powheg',
-            ],
-    'Z'   : [
-             'DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8',
-             'DYJetsToLL_M-10to50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8',
-            ],
-    'TT'  : [
-             'TTJets_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8',
-             'TTJets_DiLept_TuneCUETP8M1_13TeV-madgraphMLM-pythia8',
-             'TTJets_SingleLeptFromT_TuneCUETP8M1_13TeV-madgraphMLM-pythia8',
-             'TTJets_SingleLeptFromTbar_TuneCUETP8M1_13TeV-madgraphMLM-pythia8',
-            ],
-    'data': [
-             'DoubleMuon',
-             'DoubleEG',
-             'MuonEG',
-             'SingleMuon',
-             'SingleElectron',
-            ],
-    'HppHmm200GeV' : ['HPlusPlusHMinusMinusHTo4L_M-200_13TeV-pythia8'],
-    'HppHmm300GeV' : ['HPlusPlusHMinusMinusHTo4L_M-300_13TeV-pythia8'],
-    'HppHmm400GeV' : ['HPlusPlusHMinusMinusHTo4L_M-400_13TeV-pythia8'],
-    'HppHmm500GeV' : ['HPlusPlusHMinusMinusHTo4L_M-500_13TeV-pythia8'],
-    'HppHmm600GeV' : ['HPlusPlusHMinusMinusHTo4L_M-600_13TeV-pythia8'],
-    'HppHmm700GeV' : ['HPlusPlusHMinusMinusHTo4L_M-700_13TeV-pythia8'],
-    'HppHmm800GeV' : ['HPlusPlusHMinusMinusHTo4L_M-800_13TeV-pythia8'],
-    'HppHmm900GeV' : ['HPlusPlusHMinusMinusHTo4L_M-900_13TeV-pythia8'],
-    'HppHmm1000GeV': ['HPlusPlusHMinusMinusHTo4L_M-1000_13TeV-pythia8'],
-}
+scales = {}
+for mode in modes:
+    scales[mode] = getScales(mode)
 
-# no tau yet
-allowedRecoChannels = {
-    'ee100': ['ee'],
-    'em100': ['em'],
-    'et100': ['ee','em'],
-    'mm100': ['mm'],
-    'mt100': ['em','mm'],
-    'tt100': ['ee','em','mm'],
-    'BP1'  : ['ee','em','mm'],
-    'BP2'  : ['ee','em','mm'],
-    'BP3'  : ['ee','em','mm'],
-    'BP4'  : ['ee','em','mm'],
-}
+samples = ['TTV','VH','VVV','ZZ']
+allsamples = ['W','T','TT','TTVall','Z','WW','VHall','WZ','VVV','ZZall']
+signals = ['HppHmm{0}GeV'.format(mass) for mass in masses]
+backgrounds = ['datadriven']
 
-allowedHiggsChannels = {
-    'ee100': ['ee'],
-    'em100': ['em'],
-    'et100': ['et'],
-    'mm100': ['mm'],
-    'mt100': ['mt'],
-    'tt100': ['tt'],
-    'BP1'  : ['em','et','mm','mt','tt'],
-    'BP2'  : ['ee','mm','mt','tt'],
-    'BP3'  : ['ee','mm','tt'],
-    'BP4'  : ['ee','em','et','mm','mt','tt'],
-}
+datadrivenSamples = []
+for s in samples + ['data']:
+    datadrivenSamples += sigMap[s]
 
-scales = {
-    'ee100': Scales(1., 0., 0., 0., 0., 0.),
-    'em100': Scales(0., 1., 0., 0., 0., 0.),
-    'et100': Scales(0., 0., 1., 0., 0., 0.),
-    'mm100': Scales(0., 0., 0., 1., 0., 0.),
-    'mt100': Scales(0., 0., 0., 0., 1., 0.),
-    'tt100': Scales(0., 0., 0., 0., 0., 1.),
-    'BP1'  : Scales(0, 0.01, 0.01, 0.3, 0.38, 0.3),
-    'BP2'  : Scales(1./2., 0, 0, 1./8., 1./4., 1./8.),
-    'BP3'  : Scales(1./3., 0, 0, 1./3., 0, 1./3.),
-    'BP4'  : Scales(1./6., 1./6., 1./6., 1./6., 1./6., 1./6.),
+counters = {}
+for s in allsamples:
+    sname = s.replace('all','')
+    counters[sname] = Counter('Hpp4l')
+    counters[sname].addProcess(sname,sigMap[s])
+
+for s in signals:
+    counters[s] = Counter('Hpp4l')
+    counters[s].addProcess(s,sigMap[s],signal=True)
+
+counters['data'] = Counter('Hpp4l')
+counters['data'].addProcess('data',sigMap['data'])
+
+def getCount(sig,directory):
+    tot, totErr = counters[sig].getCount(directory,sig)
+    return (tot,totErr)
+
+def getBackgroundCount(directory):
+    tot = 0
+    totErr2 = 0
+    for s in allsamples:
+        sname = s.replace('all','')
+        val,err = getCount(sname,directory)
+        tot += val
+        totErr2 += err**2
+    return (tot,totErr2**0.5)
+
+def getAlphaCount(directory):
+    mc_side       = getBackgroundCount('old/sideband/{0}'.format(directory))
+    mc_mw         = getBackgroundCount('old/massWindow/{0}'.format(directory))
+    #mc_all        = getBackgroundCount('old/allMassWindow/{0}'.format(directory))
+    data_allside  = getCount('data','old/allSideband/{0}'.format(directory))
+    alpha         = divWithError(mc_mw,mc_side)
+    data_exp      = prodWithError(data_allside,alpha)
+    # return data_exp, data_sideband, alpha, alpha stat uncertainty
+    return (data_exp[0],data_allside[0],alpha[0],alpha[1])
+
+# TODO, think if this is what we want
+modeMap = {
+    'ee100': [0,0],
+    'em100': [0,0],
+    'et100': [1,1],
+    'mm100': [0,0],
+    'mt100': [1,1],
+    'tt100': [2,2],
+    'BP1'  : [2,2],
+    'BP2'  : [2,2],
+    'BP3'  : [2,2],
+    'BP4'  : [2,2],
 }
 
 for mode in modes:
@@ -141,18 +99,13 @@ for mode in modes:
         limits.addEra('13TeV')
         limits.addAnalysis('Hpp4l')
         
-        genChannels = []
-        for hpp in allowedHiggsChannels[mode]:
-            for hmm in allowedHiggsChannels[mode]:
-                chan = hpp+hmm
-                genChannels += [chan]
-
-        recoChannels = []
-        for hpp in allowedRecoChannels[mode]:
-            for hmm in allowedRecoChannels[mode]:
-                chan = hpp+hmm
-                recoChannels += [chan]
-                limits.addChannel(chan)
+        # find out what reco/gen channels can exist for this mode
+        recoChans = set()
+        for gen in genRecoMap:
+            s = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
+            if not s: continue
+            recoChans.update(genRecoMap[gen])
+        for reco in recoChans: limits.addChannel(reco)
 
         signals = ['HppHmm{0}GeV'.format(mass)]
         for sig in signals:
@@ -165,49 +118,70 @@ for mode in modes:
         staterr = {}
         for era in ['13TeV']:
             for analysis in ['Hpp4l']:
-                for channel in recoChannels:
-                    for proc in backgrounds:
-                        value,err = readCount(['flat/Hpp4l/{0}.root'.format(s) for s in sigMap[proc]],['old/{mass}/{chan}'.format(mass=mass,chan=channel)],doError=True)
-                        limits.setExpected(proc,era,analysis,channel,value)
-                        if value: staterr[((proc,),(era,),(analysis,),(channel,))] = 1+err/value
+                for reco in recoChans:
+                    # for 100%, get num taus, for benchmarks, based on reco
+                    hpphmm = 'hpp{0}hmm{1}'.format(modeMap[mode][0],modeMap[mode][1])
+                    if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
+                        value,side,alpha,err = getAlphaCount('{0}/{1}/{2}'.format(mass,hpphmm,reco))
+                        limits.setExpected('datadriven',era,analysis,reco,value)
+                        limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
+                                             'gmN {0}'.format(int(side)),
+                                             systematics={(('datadriven',),(era,),(analysis,),(reco,)):alpha})
+                        if value: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/value
+                    else:
+                        for proc in backgrounds:
+                            value,err = getCount(proc,'old/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
+                            limits.setExpected(proc,era,analysis,reco,value)
+                            if value: staterr[((proc,),(era,),(analysis,),(reco,))] = 1+err/value
                     for proc in signals:
                         totalValue = 0.
                         err2 = 0.
-                        for genChannel in genChannels:
-                            value,err = readCount(['flat/Hpp4l/{0}.root'.format(s) for s in sigMap[proc]],['old/{mass}/{chan}/gen_{genchan}'.format(mass=mass,chan=channel,genchan=genChannel)],doError=True)
-                            scale = scales[mode].scale_Hpp4l(genChannel[:2],genChannel[2:])
+                        for gen in genRecoMap:
+                            if reco not in genRecoMap[gen]: continue
+                            value,err = getCount(proc,'old/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphmm,reco,gen))
+                            scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
                             totalValue += scale*value
                             err2 += (scale*err)**2
-                        limits.setExpected(proc,era,analysis,channel,totalValue)
-                        if totalValue: staterr[((proc,),(era,),(analysis,),(channel,))] = 1.+err2**0.5/totalValue
-                    obs = readCount(['flat/Hpp4l/{0}.root'.format(s) for s in sigMap['data']],['old/{mass}/{chan}'.format(mass=mass,chan=channel)])
-                    limits.setObserved(era,analysis,channel,obs)
+                        limits.setExpected(proc,era,analysis,reco,totalValue)
+                        if totalValue: staterr[((proc,),(era,),(analysis,),(reco,))] = 1.+err2**0.5/totalValue
+                    obs = getCount('data','old/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
+                    limits.setObserved(era,analysis,reco,obs)
 
         # systematics
         # stat errs
         limits.addSystematic('stat_{process}','lnN',systematics=staterr)
 
+        systproc = tuple([proc for proc in signals + backgrounds if proc!='datadriven'])
+
         # lumi 2.7% for 2015
         lumisyst = {
-            (('all',),('13TeV',),('all',),('all',)): 1.027,
+            (systproc,('13TeV',),('all',),('all',)): 1.027,
         }
         limits.addSystematic('lumi_{era}','lnN',systematics=lumisyst)
 
         # electron id 2%/leg
         elecsyst = {}
         for c in range(4):
-            systChans = tuple([chan for chan in recoChannels if chan.count('e')==c+1])
+            systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
             if not systChans: continue
-            elecsyst[(('all',),('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
+            elecsyst[(systproc,('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
         if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
         # muon id 1+0.5%/leg
         muonsyst = {}
         for c in range(4):
-            systChans = tuple([chan for chan in recoChannels if chan.count('m')==c+1])
+            systChans = tuple([chan for chan in recoChans if chan.count('m')==c+1])
             if not systChans: continue
-            muonsyst[(('all',),('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
+            muonsyst[(systproc,('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
         if muonsyst: limits.addSystematic('muon_id','lnN',systematics=muonsyst)
+
+        # taus id 6%
+        tausyst = {}
+        for c in range(4):
+            systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
+            if not systChans: continue
+            tausyst[(systproc,('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
+        if tausyst: limits.addSystematic('tau_id','lnN',systematics=tausyst)
 
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp4l',mode)
