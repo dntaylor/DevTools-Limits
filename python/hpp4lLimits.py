@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%
 
 # define cards to create
 modes = ['ee100','em100','et100','mm100','mt100','tt100','BP1','BP2','BP3','BP4']
-masses = [200,300,400,500,600,700,800,900,1000]
+masses = [200,300,400,500,600,700,800,900,1000,1100,1200,1300,1400,1500]
 
 cats = getCategories('Hpp4l')
 catLabels = getCategoryLabels('Hpp4l')
@@ -24,15 +24,15 @@ subCatLabels = getSubCategoryLabels('Hpp4l')
 chans = getChannels('Hpp4l')
 chanLabels = getChannelLabels('Hpp4l')
 genRecoMap = getGenRecoChannelMap('Hpp4l')
-masses = [200,300,400,500,600,700,800,900,1000]
 sigMap = getSigMap('Hpp4l')
+sigMapDD = getSigMap('Hpp4l',datadriven=True)
 
 scales = {}
 for mode in modes:
     scales[mode] = getScales(mode)
 
-samples = ['TTV','VH','VVV','ZZ']
-allsamples = ['W','T','TT','TTVall','Z','WW','VHall','WZ','VVV','ZZall']
+samples = ['TTV','VVV','ZZ']
+allsamples = ['TT','TTV','Z','WZ','VVV','ZZ']
 signals = ['HppHmm{0}GeV'.format(mass) for mass in masses]
 backgrounds = ['datadriven']
 
@@ -42,9 +42,8 @@ for s in samples + ['data']:
 
 counters = {}
 for s in allsamples:
-    sname = s.replace('all','')
-    counters[sname] = Counter('Hpp4l')
-    counters[sname].addProcess(sname,sigMap[s])
+    counters[s] = Counter('Hpp4l')
+    counters[s].addProcess(s,sigMap[s])
 
 for s in signals:
     counters[s] = Counter('Hpp4l')
@@ -54,7 +53,7 @@ counters['data'] = Counter('Hpp4l')
 counters['data'].addProcess('data',sigMap['data'])
 
 def getCount(sig,directory):
-    tot, totErr = counters[sig].getCount(directory,sig)
+    tot, totErr = counters[sig].getCount(sig,directory)
     return (tot,totErr)
 
 def getBackgroundCount(directory):
@@ -102,6 +101,7 @@ for mode in modes:
         # find out what reco/gen channels can exist for this mode
         recoChans = set()
         for gen in genRecoMap:
+            if len(gen)!=4: continue # only 4l allowed here
             s = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
             if not s: continue
             recoChans.update(genRecoMap[gen])
@@ -137,6 +137,7 @@ for mode in modes:
                         totalValue = 0.
                         err2 = 0.
                         for gen in genRecoMap:
+                            if len(gen)!=4: continue # only 4l allowed here
                             if reco not in genRecoMap[gen]: continue
                             value,err = getCount(proc,'old/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphmm,reco,gen))
                             scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
@@ -153,7 +154,7 @@ for mode in modes:
 
         systproc = tuple([proc for proc in signals + backgrounds if proc!='datadriven'])
 
-        # lumi 2.7% for 2015
+        # lumi 2.7% for 2015 and 2016
         lumisyst = {
             (systproc,('13TeV',),('all',),('all',)): 1.027,
         }
