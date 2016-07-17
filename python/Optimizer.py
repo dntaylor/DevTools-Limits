@@ -115,13 +115,14 @@ class Optimizer(object):
             if defs['fix']:
                 allCuts[varName] = ['{0}{1}{2}'.format(defs['var'],defs['logic'],defs['fix'])]
             elif defs['div'] and defs['min'] and defs['max']:
-                allCuts[varName] = ['{0}{1}{2}'.format(defs['var'],defs['logic'],float(x)*(defs['max']-defs['min'])/defs['div']) for x in range(defs['div'])]
+                allCuts[varName] = ['{0}{1}{2}'.format(defs['var'],defs['logic'],float(x)*(defs['max']-defs['min'])/defs['div']+defs['min']) for x in range(defs['div']+1)]
             else:
                 logging.warning('Invalid parameters for {0}.'.format(varName))
         # iterate through
         testStats = {}
         for params in itertools.product(*[y for x,y in sorted(allCuts.iteritems())]):
-            logging.info('Processing: {0}'.format(' '.join(params)))
-            testStats[params] = func(self.baseSelection,*params)
-            logging.info('          : {0}'.format(testStats[params]))
+            key = ' && '.join(params)
+            logging.info('Processing: {0}'.format(key))
+            testStats[key] = func(self.baseSelection,*params)
+            logging.info('          : {0}'.format(testStats[key]))
         return testStats

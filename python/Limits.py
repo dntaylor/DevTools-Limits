@@ -279,6 +279,7 @@ class Limits(object):
 
         kmax = len(systRows)
 
+        logging.info('Writing {0}'.format(filename))
         # now write to file
         with open(filename,'w') as f:
             lineWidth = 80
