@@ -176,6 +176,12 @@ for mode in modes:
             muonsyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
         if muonsyst: limits.addSystematic('muon_id','lnN',systematics=muonsyst)
 
+        # muon single trigger 0.5%
+        muontrigsyst = {}
+        systChans = tuple([chan for chan in recoChans if chan.count('m')>=1])
+        if systChans: muonsyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.005
+        if muontrigsyst: limits.addSystematic('muon_single_trig','lnN',systematics=muontrigsyst)
+
         # taus id 6%
         tausyst = {}
         for c in range(3):
