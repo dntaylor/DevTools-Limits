@@ -67,10 +67,10 @@ def getBackgroundCount(directory):
     return (tot,totErr2**0.5)
 
 def getAlphaCount(directory):
-    mc_side       = getBackgroundCount('old/sideband/{0}'.format(directory))
-    mc_mw         = getBackgroundCount('old/massWindow/{0}'.format(directory))
-    #mc_all        = getBackgroundCount('old/allMassWindow/{0}'.format(directory))
-    data_allside  = getCount('data','old/allSideband/{0}'.format(directory))
+    mc_side       = getBackgroundCount('new/sideband/{0}'.format(directory))
+    mc_mw         = getBackgroundCount('new/massWindow/{0}'.format(directory))
+    #mc_all        = getBackgroundCount('new/allMassWindow/{0}'.format(directory))
+    data_allside  = getCount('data','new/allSideband/{0}'.format(directory))
     alpha         = divWithError(mc_mw,mc_side)
     data_exp      = prodWithError(data_allside,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
@@ -130,7 +130,7 @@ for mode in modes:
                         if value: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/value
                     else:
                         for proc in backgrounds:
-                            value,err = getCount(proc,'old/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
+                            value,err = getCount(proc,'new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
                             limits.setExpected(proc,era,analysis,reco,value)
                             if value: staterr[((proc,),(era,),(analysis,),(reco,))] = 1+err/value
                     for proc in signals:
@@ -139,13 +139,13 @@ for mode in modes:
                         for gen in genRecoMap:
                             if len(gen)!=3: continue # only 3l allowed here
                             if reco not in genRecoMap[gen]: continue
-                            value,err = getCount(proc,'old/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
+                            value,err = getCount(proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
                             scale = scales[mode].scale_Hpp3l(gen[:2],gen[2:])
                             totalValue += scale*value
                             err2 += (scale*err)**2
                         limits.setExpected(proc,era,analysis,reco,totalValue)
                         if totalValue: staterr[((proc,),(era,),(analysis,),(reco,))] = 1.+err2**0.5/totalValue
-                    obs = getCount('data','old/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
+                    obs = getCount('data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
                     limits.setObserved(era,analysis,reco,obs)
 
         # systematics
@@ -183,6 +183,27 @@ for mode in modes:
             if not systChans: continue
             tausyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
         if tausyst: limits.addSystematic('tau_id','lnN',systematics=tausyst)
+
+        # taus charge misid 2.2%
+        taucharge = {}
+        for c in range(3):
+            systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
+            if not systChans: continue
+            taucharge[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
+        if taucharge: limits.addSystematic('tau_charge','lnN',systematics=taucharge)
+
+        # signal unc 15%
+        sigsyst = {
+            (sigproc, ('13TeV',), ('all',), ('all',)): 1.15,
+        }
+        limits.addSystematic('sig_unc_{analysis}','lnN',systematics=sigsyst)
+
+        # alpha 10%
+        if 'datadriven' in backgrounds:
+            ddsyst = {
+                (ddproc, ('13TeV',), ('all',), ('all',)): 1.1,
+            }
+            limits.addSystematic('alpha_unc_{analysis}_{channel}','lnN',systematics=ddsyst)
 
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
