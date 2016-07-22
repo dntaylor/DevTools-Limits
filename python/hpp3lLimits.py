@@ -33,7 +33,8 @@ for mode in modes:
 
 samples = ['TTV','VVV','ZZ']
 allsamples = ['TT','TTV','Z','WZ','VVV','ZZ']
-signals = ['HppHm{0}GeV'.format(mass) for mass in masses]
+signalsAP = ['HppHm{0}GeV'.format(mass) for mass in masses]
+signalsPP = ['HppHmm{0}GeV'.format(mass) for mass in masses]
 backgrounds = ['datadriven']
 
 datadrivenSamples = []
@@ -45,7 +46,11 @@ for s in allsamples:
     counters[s] = Counter('Hpp3l')
     counters[s].addProcess(s,sigMap[s])
 
-for s in signals:
+for s in signalsAP:
+    counters[s] = Counter('Hpp3l')
+    counters[s].addProcess(s,sigMap[s],signal=True)
+
+for s in signalsPP:
     counters[s] = Counter('Hpp3l')
     counters[s].addProcess(s,sigMap[s],signal=True)
 
@@ -97,18 +102,23 @@ for mode in modes:
     
         limits.addEra('13TeV')
         limits.addAnalysis('Hpp3l')
+        limits.addAnalysis('Hpp3lAP')
+        limits.addAnalysis('Hpp3lPP')
         
         # find out what reco/gen channels can exist for this mode
         recoChans = set()
         for gen in genRecoMap:
-            if len(gen)!=3: continue # only 3l allowed here
-            s = scales[mode].scale_Hpp3l(gen[:2],gen[2:])
+            if len(gen)==3:
+                s = scales[mode].scale_Hpp3l(gen[:2],gen[2:])
+            else:
+                s = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
             if not s: continue
             recoChans.update(genRecoMap[gen])
         for reco in recoChans: limits.addChannel(reco)
 
-        signals = ['HppHm{0}GeV'.format(mass)]
-        for sig in signals:
+        signalsAP = ['HppHm{0}GeV'.format(mass)]
+        signalsPP = ['HppHmm{0}GeV'.format(mass)]
+        for sig in signalsAP+signalsPP:
             limits.addProcess(sig,signal=True)
         
         for background in backgrounds:
@@ -124,39 +134,63 @@ for mode in modes:
                     if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
                         value,side,alpha,err = getAlphaCount('{0}/{1}/{2}'.format(mass,hpphm,reco))
                         limits.setExpected('datadriven',era,analysis,reco,value)
+                        limits.setExpected('datadriven',era,analysis+'AP',reco,value)
+                        limits.setExpected('datadriven',era,analysis+'PP',reco,value)
                         limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
                                              'gmN {0}'.format(int(side)),
-                                             systematics={(('datadriven',),(era,),(analysis,),(reco,)):alpha})
-                        if value: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/value
+                                             systematics={(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,)):alpha})
+                        if value: staterr[(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = 1+err/value
                     else:
                         for proc in backgrounds:
                             value,err = getCount(proc,'new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
                             limits.setExpected(proc,era,analysis,reco,value)
-                            if value: staterr[((proc,),(era,),(analysis,),(reco,))] = 1+err/value
-                    for proc in signals:
+                            limits.setExpected(proc,era,analysis+'AP',reco,value)
+                            limits.setExpected(proc,era,analysis+'PP',reco,value)
+                            if value: staterr[((proc,),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = 1+err/value
+                    # AP
+                    for proc in signalsAP:
                         totalValue = 0.
                         err2 = 0.
                         for gen in genRecoMap:
-                            if len(gen)!=3: continue # only 3l allowed here
+                            if len(gen)!=3: continue # 3 for AP, 4 for PP
                             if reco not in genRecoMap[gen]: continue
                             value,err = getCount(proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
                             scale = scales[mode].scale_Hpp3l(gen[:2],gen[2:])
                             totalValue += scale*value
                             err2 += (scale*err)**2
                         limits.setExpected(proc,era,analysis,reco,totalValue)
-                        if totalValue: staterr[((proc,),(era,),(analysis,),(reco,))] = 1.+err2**0.5/totalValue
+                        limits.setExpected(proc,era,analysis+'AP',reco,totalValue)
+                        if totalValue: staterr[((proc,),(era,),(analysis,analysis+'AP',),(reco,))] = 1.+err2**0.5/totalValue
+                    # PP
+                    for proc in signalsPP:
+                        totalValue = 0.
+                        err2 = 0.
+                        for gen in genRecoMap:
+                            if len(gen)!=4: continue # 3 for AP, 4 for PP
+                            if reco not in genRecoMap[gen]: continue
+                            value,err = getCount(proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
+                            scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
+                            totalValue += scale*value
+                            err2 += (scale*err)**2
+                        limits.setExpected(proc,era,analysis,reco,totalValue)
+                        limits.setExpected(proc,era,analysis+'PP',reco,totalValue)
+                        if totalValue: staterr[((proc,),(era,),(analysis,analysis+'PP',),(reco,))] = 1.+err2**0.5/totalValue
                     obs = getCount('data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
                     limits.setObserved(era,analysis,reco,obs)
+                    limits.setObserved(era,analysis+'AP',reco,obs)
+                    limits.setObserved(era,analysis+'PP',reco,obs)
 
         # systematics
         # stat errs
         limits.addSystematic('stat_{process}','lnN',systematics=staterr)
 
-        systproc = tuple([proc for proc in signals + backgrounds if proc!='datadriven'])
+        systproc = tuple([proc for proc in signalsAP + signalsPP + backgrounds if proc!='datadriven'])
+        sigproc = tuple([proc for proc in signalsAP+signalsPP])
+        ddproc = ('datadriven',)
 
-        # lumi 2.7% for 2015 and 2016
+        # lumi 2.7% for 2015 and 6.2% for 2016
         lumisyst = {
-            (systproc,('13TeV',),('all',),('all',)): 1.027,
+            (systproc,('13TeV',),('all',),('all',)): 1.062,
         }
         limits.addSystematic('lumi_{era}','lnN',systematics=lumisyst)
 
@@ -165,7 +199,7 @@ for mode in modes:
         for c in range(3):
             systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
             if not systChans: continue
-            elecsyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
+            elecsyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
         if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
         # muon id 1+0.5%/leg
@@ -173,13 +207,13 @@ for mode in modes:
         for c in range(3):
             systChans = tuple([chan for chan in recoChans if chan.count('m')==c+1])
             if not systChans: continue
-            muonsyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
+            muonsyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
         if muonsyst: limits.addSystematic('muon_id','lnN',systematics=muonsyst)
 
         # muon single trigger 0.5%
         muontrigsyst = {}
         systChans = tuple([chan for chan in recoChans if chan.count('m')>=1])
-        if systChans: muonsyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.005
+        if systChans: muonsyst[(systproc,('13TeV',),('all',),systChans)] = 1.005
         if muontrigsyst: limits.addSystematic('muon_single_trig','lnN',systematics=muontrigsyst)
 
         # taus id 6%
@@ -187,7 +221,7 @@ for mode in modes:
         for c in range(3):
             systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
             if not systChans: continue
-            tausyst[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
+            tausyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
         if tausyst: limits.addSystematic('tau_id','lnN',systematics=tausyst)
 
         # taus charge misid 2.2%
@@ -195,7 +229,7 @@ for mode in modes:
         for c in range(3):
             systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
             if not systChans: continue
-            taucharge[(systproc,('13TeV',),('Hpp3l',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
+            taucharge[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
         if taucharge: limits.addSystematic('tau_charge','lnN',systematics=taucharge)
 
         # signal unc 15%
@@ -214,4 +248,6 @@ for mode in modes:
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass))
+        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'])
+        limits.printCard('{0}/{1}AP.txt'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds)
+        limits.printCard('{0}/{1}PP.txt'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds)

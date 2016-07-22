@@ -204,7 +204,7 @@ class Limits(object):
         val = self.expected[key] if key in self.expected else 0.
         return val if val else 1.0e-10
 
-    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],blind=True):
+    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True):
         '''
         Print a datacard to file.
         Select the eras, analyses, channels you want to include.
@@ -219,7 +219,9 @@ class Limits(object):
         if eras==['all']: eras = self.eras
         if analyses==['all']: analyses = self.analyses
         if channels==['all']: channels = self.channels
-        processes = self.processes.keys()
+        if processes==['all']: processes = self.processes.keys()
+        signals = [x for x in self.signals if x in processes]
+        backgrounds = [x for x in self.backgrounds if x in processes]
 
 
         # setup bins
@@ -237,7 +239,7 @@ class Limits(object):
         jmax = len(self.processes)-1
 
         totalColumns = len(eras)*len(analyses)*len(channels)*len(processes)
-        processesOrdered = self.signals + self.backgrounds
+        processesOrdered = signals + backgrounds
         binsForRates = ['bin','']+['']*totalColumns
         processNames = ['process','']+['']*totalColumns
         processNumbers = ['process','']+['']*totalColumns
@@ -250,7 +252,7 @@ class Limits(object):
                         colpos += 1
                         binsForRates[colpos] = '{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=channel)
                         processNames[colpos] = process
-                        processNumbers[colpos] = '{0:<10}'.format(processesOrdered.index(process)-len(self.signals)+1)
+                        processNumbers[colpos] = '{0:<10}'.format(processesOrdered.index(process)-len(signals)+1)
                         rates[colpos] = '{0:<10.4g}'.format(self.getExpected(process,era,analysis,channel))
 
         # setup nuissances

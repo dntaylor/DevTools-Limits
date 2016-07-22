@@ -156,9 +156,9 @@ for mode in modes:
         sigproc = tuple(signals)
         ddproc = ('datadriven',)
 
-        # lumi 2.7% for 2015 and 2016
+        # lumi 2.7% for 2015 and 6.2% for 2016
         lumisyst = {
-            (systproc,('13TeV',),('all',),('all',)): 1.027,
+            (systproc,('13TeV',),('all',),('all',)): 1.062,
         }
         limits.addSystematic('lumi_{era}','lnN',systematics=lumisyst)
 
