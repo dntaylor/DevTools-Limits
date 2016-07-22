@@ -9,6 +9,7 @@ from DevTools.Limits.Limits import Limits
 from DevTools.Utilities.utilities import *
 from DevTools.Plotter.Counter import Counter
 from DevTools.Plotter.higgsUtilities import *
+from DevTools.Limits.higgsUncertainties import addUncertainties
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
@@ -100,7 +101,7 @@ for mode in modes:
         logging.info('Producing datacard for {0} - {1} GeV'.format(mode,mass))
         limits = Limits()
     
-        limits.addEra('13TeV')
+        limits.addEra('13TeV80X')
         limits.addAnalysis('Hpp3l')
         limits.addAnalysis('Hpp3lAP')
         limits.addAnalysis('Hpp3lPP')
@@ -126,7 +127,7 @@ for mode in modes:
 
         # set values and stat error
         staterr = {}
-        for era in ['13TeV']:
+        for era in ['13TeV80X']:
             for analysis in ['Hpp3l']:
                 for reco in recoChans:
                     # for 100%, get num taus, for benchmarks, based on reco
@@ -184,66 +185,7 @@ for mode in modes:
         # stat errs
         limits.addSystematic('stat_{process}','lnN',systematics=staterr)
 
-        systproc = tuple([proc for proc in signalsAP + signalsPP + backgrounds if proc!='datadriven'])
-        sigproc = tuple([proc for proc in signalsAP+signalsPP])
-        ddproc = ('datadriven',)
-
-        # lumi 2.7% for 2015 and 6.2% for 2016
-        lumisyst = {
-            (systproc,('13TeV',),('all',),('all',)): 1.062,
-        }
-        limits.addSystematic('lumi_{era}','lnN',systematics=lumisyst)
-
-        # electron id 2%/leg
-        elecsyst = {}
-        for c in range(3):
-            systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
-            if not systChans: continue
-            elecsyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
-        if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
-
-        # muon id 1+0.5%/leg
-        muonsyst = {}
-        for c in range(3):
-            systChans = tuple([chan for chan in recoChans if chan.count('m')==c+1])
-            if not systChans: continue
-            muonsyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
-        if muonsyst: limits.addSystematic('muon_id','lnN',systematics=muonsyst)
-
-        # muon single trigger 0.5%
-        muontrigsyst = {}
-        systChans = tuple([chan for chan in recoChans if chan.count('m')>=1])
-        if systChans: muonsyst[(systproc,('13TeV',),('all',),systChans)] = 1.005
-        if muontrigsyst: limits.addSystematic('muon_single_trig','lnN',systematics=muontrigsyst)
-
-        # taus id 6%
-        tausyst = {}
-        for c in range(3):
-            systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
-            if not systChans: continue
-            tausyst[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
-        if tausyst: limits.addSystematic('tau_id','lnN',systematics=tausyst)
-
-        # taus charge misid 2.2%
-        taucharge = {}
-        for c in range(3):
-            systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
-            if not systChans: continue
-            taucharge[(systproc,('13TeV',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
-        if taucharge: limits.addSystematic('tau_charge','lnN',systematics=taucharge)
-
-        # signal unc 15%
-        sigsyst = {
-            (sigproc, ('13TeV',), ('all',), ('all',)): 1.15,
-        }
-        limits.addSystematic('sig_unc_{analysis}','lnN',systematics=sigsyst)
-
-        # alpha 10%
-        if 'datadriven' in backgrounds:
-            ddsyst = {
-                (ddproc, ('13TeV',), ('all',), ('all',)): 1.1,
-            }
-            limits.addSystematic('alpha_unc_{analysis}_{channel}','lnN',systematics=ddsyst)
+        addUncertainties(limits,recoChans,signalsAP+signalsPP,backgrounds)
 
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
