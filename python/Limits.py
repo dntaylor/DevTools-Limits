@@ -102,7 +102,7 @@ class Limits(object):
         of which is another tuple of the components this sytematic covers.
         '''
         if systname in self.systematics:
-            logging.warning('Systematic {0} already added.'.format(syst))
+            logging.warning('Systematic {0} already added.'.format(systname))
         else:
             goodToAdd = True
             for syst in systematics:

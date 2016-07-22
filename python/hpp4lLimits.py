@@ -198,7 +198,7 @@ for mode in modes:
             systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
             if not systChans: continue
             taucharge[(systproc,('13TeV',),('Hpp4l',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
-        if taucharge: limits.addSystematic('tau_id','lnN',systematics=taucharge)
+        if taucharge: limits.addSystematic('tau_charge','lnN',systematics=taucharge)
 
         # signal unc 15%
         sigsyst = {
