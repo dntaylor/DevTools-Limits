@@ -150,10 +150,7 @@ for mode in modes:
                     limits.setObserved(era,analysis,reco,obs)
 
         # systematics
-        # stat errs
-        limits.addSystematic('stat_{process}','lnN',systematics=staterr)
-
-        addUncertainties(limits,recoChans,signals,backgrounds)
+        addUncertainties(limits,staterr,recoChans,signals,backgrounds)
 
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp4l',mode)

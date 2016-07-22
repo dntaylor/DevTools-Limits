@@ -1,7 +1,9 @@
 import math
 
-def addUncertainties(limits,recoChans,signals,backgrounds):
+def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
     '''Add common uncertainties for the H++ analysis'''
+    # stat errs
+    limits.addSystematic('stat_{process}_{channel}','lnN',systematics=staterr)
 
     systproc = tuple([proc for proc in signals + backgrounds if proc!='datadriven'])
     sigproc = tuple([proc for proc in signals])
