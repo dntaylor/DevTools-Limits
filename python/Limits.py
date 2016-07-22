@@ -236,7 +236,7 @@ class Limits(object):
         imax = len(bins)-1
 
         # setup processes
-        jmax = len(self.processes)-1
+        jmax = len(processes)-1
 
         totalColumns = len(eras)*len(analyses)*len(channels)*len(processes)
         processesOrdered = signals + backgrounds
@@ -285,8 +285,8 @@ class Limits(object):
         # now write to file
         with open(filename,'w') as f:
             lineWidth = 80
-            firstWidth = 30
-            restWidth = 20
+            firstWidth = 40
+            restWidth = 30
             def getline(row):
                 return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
 
