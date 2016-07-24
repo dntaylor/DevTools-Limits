@@ -25,6 +25,7 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
 
     
     # electron id 2%/leg
+    # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
     elecsyst = {}
     for c in range(3):
         systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
@@ -32,12 +33,13 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
         elecsyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
     if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
-    # muon id 1+0.5%/leg
+    # muon id 1+1%/leg
+    # https://twiki.cern.ch/twiki/bin/view/CMS/MuonWorkInProgressAndPagResults
     muonsyst = {}
     for c in range(3):
         systChans = tuple([chan for chan in recoChans if chan.count('m')==c+1])
         if not systChans: continue
-        muonsyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.005**2))
+        muonsyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.01**2))
     if muonsyst: limits.addSystematic('muon_id','lnN',systematics=muonsyst)
 
     # muon single trigger 0.5%
@@ -47,6 +49,7 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
     if muontrigsyst: limits.addSystematic('muon_single_trig','lnN',systematics=muontrigsyst)
 
     # taus id 6%
+    # https://twiki.cern.ch/twiki/bin/view/CMS/TauIDRecommendation13TeV
     tausyst = {}
     for c in range(3):
         systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
