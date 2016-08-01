@@ -1,9 +1,13 @@
 import math
 
-def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
+def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     '''Add common uncertainties for the H++ analysis'''
     # stat errs
     limits.addSystematic('stat_{process}_{channel}','lnN',systematics=staterr)
+
+    # shifts
+    for unc,errs in uncerr.iteritems():
+        limits.addSystematic('{0}_unc'.format(unc),'lnN',systematics=errs)
 
     systproc = tuple([proc for proc in signals + backgrounds if proc!='datadriven'])
     sigproc = tuple([proc for proc in signals])
@@ -27,16 +31,25 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
     # electron id 2%/leg
     # https://twiki.cern.ch/twiki/bin/view/CMS/EgammaIDRecipesRun2
     elecsyst = {}
-    for c in range(3):
+    for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
         if not systChans: continue
         elecsyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*0.02**2)
     if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
+    # electron charge misid 4%
+    eleccharge = {}
+    for c in range(nl):
+        systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1])
+        if not systChans: continue
+        eleccharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.04**2))
+    if eleccharge: limits.addSystematic('elec_charge','lnN',systematics=eleccharge)
+
+
     # muon id 1+1%/leg
     # https://twiki.cern.ch/twiki/bin/view/CMS/MuonWorkInProgressAndPagResults
     muonsyst = {}
-    for c in range(3):
+    for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('m')==c+1])
         if not systChans: continue
         muonsyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.01**2 + 0.01**2))
@@ -51,7 +64,7 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
     # taus id 6%
     # https://twiki.cern.ch/twiki/bin/view/CMS/TauIDRecommendation13TeV
     tausyst = {}
-    for c in range(3):
+    for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
         if not systChans: continue
         tausyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
@@ -59,7 +72,7 @@ def addUncertainties(limits,staterr,recoChans,signals,backgrounds):
 
     # taus charge misid 2.2%
     taucharge = {}
-    for c in range(3):
+    for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1])
         if not systChans: continue
         taucharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
