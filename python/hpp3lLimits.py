@@ -45,7 +45,6 @@ for s in samples + ['data']:
 
 counters = {}
 shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
-shiftTypes = ['trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn'] # lep broken somehow
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']
@@ -83,7 +82,8 @@ def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
     mc_mw         = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
     #mc_all        = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
     alpha         = divWithError(mc_mw,mc_side)
-    if alphaOnly: return alpha[0]
+    if abs(alpha[0]) < abs(alpha[1]): alpha = (alpha[1], alpha[1])
+    if alphaOnly: return abs(alpha[0])
     data_allside  = getCount(counters,'data','new/allSideband/{0}'.format(directory))
     data_exp      = prodWithError(data_allside,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
@@ -93,7 +93,8 @@ def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift
     mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
     mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
     alpha         = divWithError(mc_allSide,mc_side)
-    if alphaOnly: return alpha[0]
+    if abs(alpha[0]) < abs(alpha[1]): alpha = (alpha[1], alpha[1])
+    if alphaOnly: return abs(alpha[0])
     data_side     = getCount(counters,'data','new/sideband/{0}'.format(directory))
     data_exp      = prodWithError(data_side,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
