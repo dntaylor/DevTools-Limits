@@ -13,6 +13,7 @@ from DevTools.Limits.higgsUncertainties import addUncertainties
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
+blind = False
 doShifts = True
 
 # define cards to create
@@ -356,15 +357,15 @@ for mode in modes:
                     err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
                     if err and totalValueSB: uncerr[unc][((proc,),(era,),(analysis,analysis+'PP',),(recoSB,))] = 1+err/totalValueSB
             obs = getCount(counters,'data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
-            limits.setObserved(era,analysis,reco,obs)
-            limits.setObserved(era,analysis+'AP',reco,obs)
-            limits.setObserved(era,analysis+'PP',reco,obs)
+            limits.setObserved(era,analysis,reco,obs[0])
+            limits.setObserved(era,analysis+'AP',reco,obs[0])
+            limits.setObserved(era,analysis+'PP',reco,obs[0])
             results[reco]['observed'] = obs[0]
             # sideband
             obs = getCount(counters,'data','new/allSideband/{0}/{1}/{2}'.format(mass,hpphm,reco))
-            limits.setObserved(era,analysis,recoSB,obs)
-            limits.setObserved(era,analysis+'AP',recoSB,obs)
-            limits.setObserved(era,analysis+'PP',recoSB,obs)
+            limits.setObserved(era,analysis,recoSB,obs[0])
+            limits.setObserved(era,analysis+'AP',recoSB,obs[0])
+            limits.setObserved(era,analysis+'PP',recoSB,obs[0])
             results[recoSB]['observed'] = obs[0]
             dumpResults(results,'Hpp3l','{0}/{1}'.format(mode,mass))
 
@@ -374,6 +375,6 @@ for mode in modes:
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'])
-        limits.printCard('{0}/{1}AP.txt'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds)
-        limits.printCard('{0}/{1}PP.txt'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds)
+        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'],blind=blind)
+        limits.printCard('{0}/{1}AP.txt'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}PP.txt'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds,blind=blind)

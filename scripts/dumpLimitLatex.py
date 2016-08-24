@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import json
 
 blind = True
@@ -69,6 +70,6 @@ for bp in bps:
         rowstring += ' \\hline \\hline'
         rowstring2 += ' \\hline \\hline'
 
-print LimitsTex.table.format(rows=rowstring)
-print ''
 print LimitsTex.table2.format(rows=rowstring2)
+print ''
+print LimitsTex.table.format(rows=rowstring)

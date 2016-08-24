@@ -297,6 +297,8 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # shape information
+            f.write('shapes * * FAKE\n')
+            f.write('-'*lineWidth+'\n')
             
             # observation
             f.write(getline(bins))
@@ -315,5 +317,6 @@ class Limits(object):
                 f.write(getline(systRow))
             f.write('-'*lineWidth+'\n')
 
+            # nuissance categories
 
 

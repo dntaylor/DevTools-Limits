@@ -13,6 +13,7 @@ from DevTools.Limits.higgsUncertainties import addUncertainties
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
+blind = False
 doShifts = True
 
 
@@ -52,17 +53,6 @@ for s in shiftTypes:
 if not doShifts:
     shifts = ['']
     shiftTypes = []
-for shift in shifts:
-    for s in allsamples:
-        counters[s+shift] = Counter('Hpp4l')
-        counters[s+shift].addProcess(s,sigMap[s],shift=shift)
-    
-    for s in signals:
-        counters[s+shift] = Counter('Hpp4l')
-        counters[s+shift].addProcess(s,sigMap[s],signal=True,shift=shift)
-    
-    counters['data'+shift] = Counter('Hpp4l')
-    counters['data'+shift].addProcess('data',sigMap['data'],shift=shift)
 
 def getCount(counters,sig,directory,shift=''):
     tot, totErr = counters[sig+shift].getCount(sig,directory)
@@ -298,11 +288,11 @@ for mode in modes:
                     err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
                     if err and totalValueSB: uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = 1+err/totalValueSB
             obs = getCount(counters,'data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
-            limits.setObserved(era,analysis,reco,obs)
+            limits.setObserved(era,analysis,reco,obs[0])
             results[reco]['observed'] = obs[0]
             # sideband
-            obs = getCount(counters,'data','new/allSideband/{0}/{1}/{2}'.format(mass,hpphmm,recoSB))
-            limits.setObserved(era,analysis,recoSB,obs)
+            obs = getCount(counters,'data','new/allSideband/{0}/{1}/{2}'.format(mass,hpphmm,reco))
+            limits.setObserved(era,analysis,recoSB,obs[0])
             results[recoSB]['observed'] = obs[0]
             dumpResults(results,'Hpp4l','{0}/{1}'.format(mode,mass))
 
@@ -312,4 +302,4 @@ for mode in modes:
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp4l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass))
+        limits.printCard('{0}/{1}.txt'.format(directory,mass),blind=blind)
