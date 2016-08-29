@@ -34,8 +34,8 @@ scales = {}
 for mode in modes:
     scales[mode] = getScales(mode)
 
-samples = ['TTV','VVV','ZZ']
-allsamples = ['TT','TTV','Z','WZ','VVV','ZZ']
+samples = ['TTV','VVV','ZZ','WZ']
+allsamples = ['W','T','TT','TTV','Z','WW','VVV','ZZ','WZ']
 signalsAP = ['HppHm{0}GeV'.format(mass) for mass in masses]
 signalsPP = ['HppHmm{0}GeV'.format(mass) for mass in masses]
 backgrounds = ['datadriven']
