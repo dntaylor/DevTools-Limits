@@ -80,16 +80,21 @@ def getBackgroundCount(counters,directory,datadriven=False,shift=''):
     return (tot,totErr2**0.5)
 
 def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
-    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_mw         = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    #mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    #mc_mw         = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    mc_mw          = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    mc_allmw       = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
     #mc_all        = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    alpha         = divWithError(mc_mw,mc_side)
+    alpha         = divWithError(mc_allmw,mc_mw)
     if abs(alpha[0]) < abs(alpha[1]): alpha = (alpha[1], alpha[1])
     if alphaOnly: return abs(alpha[0])
-    data_allside  = getCount(counters,'data','new/allSideband/{0}'.format(directory))
-    data_exp      = prodWithError(data_allside,alpha)
+    #data_allside  = getCount(counters,'data','new/allSideband/{0}'.format(directory))
+    data_mw  = getCount(counters,'data','new/massWindow/{0}'.format(directory))
+    data_exp      = prodWithError(data_mw,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
-    return (abs(data_exp[0]),abs(data_allside[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
+    #return (abs(data_exp[0]),abs(data_allside[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
+    return (abs(data_exp[0]),abs(data_mw[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
+
 
 def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
     mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
