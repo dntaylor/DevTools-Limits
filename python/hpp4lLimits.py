@@ -107,6 +107,21 @@ def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
     return (abs(data_exp[0]),abs(data_side[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
 
+def getDualAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
+    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    mc_allmw      = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+    alphaSR       = divWithError(mc_allmw,mc_side)
+    alphaSB       = divWithError(mc_allSide,mc_side)
+    if abs(alphaSR[0]) < abs(alphaSR[1]): alphaSR = (alphaSR[1], alphaSR[1])
+    if abs(alphaSB[0]) < abs(alphaSB[1]): alphaSB = (alphaSB[1], alphaSB[1])
+    if alphaOnly: return (abs(alphaSR[0]),abs(alphaSB[0]))
+    data_side     = getCount(counters,'data','new/sideband/{0}'.format(directory))
+    dataSR_exp    = prodWithError(data_side,alphaSR)
+    dataSB_exp    = prodWithError(data_side,alphaSB)
+    # return data_exp, data_sideband, alpha, alpha stat uncertainty
+    return (abs(dataSR_exp[0]),abs(dataSB_exp[0]),abs(data_side[0]),abs(alphaSR[0]),abs(alphaSR[1]),abs(alphaSB[0]),abs(alphaSB[1])) # fix for negative alpha
+
 
 # TODO, think if this is what we want
 modeMap = {
@@ -164,8 +179,9 @@ for shift in shifts[1:]:
                 # for 100%, get num taus, for benchmarks, based on reco
                 hpphmm = 'hpp{0}hmm{1}'.format(modeMap[mode][0],modeMap[mode][1])
                 # get the shifts effect on alpha
-                results[reco]['alpha'] = getAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
-                results[recoSB]['alpha'] = getAlphaPrimeCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
+                #results[reco]['alpha'] = getAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
+                #results[recoSB]['alpha'] = getAlphaPrimeCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
+                results[reco]['alpha'],results[recoSB]['alpha'] = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
                 # PP
                 for proc in signals:
                     results[reco][proc] = 0.
@@ -216,6 +232,7 @@ for mode in modes:
         # set values and stat error
         staterr = {}
         uncerr = {x:{} for x in shiftTypes}
+        uncerr_store = {x:{} for x in shiftTypes}
         era = '13TeV80X'
         analysis = 'Hpp4l'
         for reco in recoChans:
@@ -225,35 +242,66 @@ for mode in modes:
             # for 100%, get num taus, for benchmarks, based on reco
             hpphmm = 'hpp{0}hmm{1}'.format(modeMap[mode][0],modeMap[mode][1])
             if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
-                value,side,alpha,err = getAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
-                limits.setExpected('datadriven',era,analysis,reco,value)
+                #value,side,alpha,err = getAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
+                #limits.setExpected('datadriven',era,analysis,reco,value)
+                #limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
+                #                     'gmN {0}'.format(int(side)),
+                #                     systematics={(('datadriven',),(era,),(analysis,),(reco,)):alpha})
+                #if value: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/value
+                #results[reco]['alpha'] = alpha
+                #results[reco]['alphaError'] = err
+                #results[reco]['expected'] = value
+                #results[reco]['sideCount'] = side
+                ## get the shifts effect on alpha
+                #for unc in shiftTypes:
+                #    err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alpha)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alpha))/2.
+                #    if err and alpha: uncerr[unc][(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/alpha
+                ## sideband values
+                #value,side,alpha,err = getAlphaPrimeCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
+                #limits.setExpected('datadriven',era,analysis,recoSB,value)
+                #limits.addSystematic('alphaSB_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=recoSB),
+                #                     'gmN {0}'.format(int(side)),
+                #                     systematics={(('datadriven',),(era,),(analysis,),(recoSB,)):alpha})
+                #if value: staterr[(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/value
+                #results[recoSB]['alpha'] = alpha
+                #results[recoSB]['alphaError'] = err
+                #results[recoSB]['expected'] = value
+                #results[recoSB]['sideCount'] = side
+                ## get the shifts effect on alpha
+                #for unc in shiftTypes:
+                #    err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alpha)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alpha))/2.
+                #    if err and alpha: uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/alpha
+                # dual alpha
+                valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
+                limits.setExpected('datadriven',era,analysis,reco,valueSR)
+                limits.setExpected('datadriven',era,analysis,recoSB,valueSB)
                 limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
                                      'gmN {0}'.format(int(side)),
-                                     systematics={(('datadriven',),(era,),(analysis,),(reco,)):alpha})
-                if value: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/value
-                results[reco]['alpha'] = alpha
-                results[reco]['alphaError'] = err
-                results[reco]['expected'] = value
+                                     systematics={
+                                         (('datadriven',),(era,),(analysis,),(reco,)):alphaSR,
+                                         (('datadriven',),(era,),(analysis,),(recoSB,)):alphaSB,
+                                     })
+                if valueSR: staterr[(('datadriven',),(era,),(analysis,),(reco,))] = 1+errSR/valueSR
+                if valueSB: staterr[(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+errSB/valueSB
+                results[reco]['alpha'] = alphaSR
+                results[reco]['alphaError'] = errSR
+                results[reco]['expected'] = valueSR
                 results[reco]['sideCount'] = side
-                # get the shifts effect on alpha
-                for unc in shiftTypes:
-                    err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alpha)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alpha))/2.
-                    if err and alpha: uncerr[unc][(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/alpha
-                # sideband values
-                value,side,alpha,err = getAlphaPrimeCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
-                limits.setExpected('datadriven',era,analysis,recoSB,value)
-                limits.addSystematic('alphaSB_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=recoSB),
-                                     'gmN {0}'.format(int(side)),
-                                     systematics={(('datadriven',),(era,),(analysis,),(recoSB,)):alpha})
-                if value: staterr[(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/value
-                results[recoSB]['alpha'] = alpha
-                results[recoSB]['alphaError'] = err
-                results[recoSB]['expected'] = value
+                results[recoSB]['alpha'] = alphaSB
+                results[recoSB]['alphaError'] = errSB
+                results[recoSB]['expected'] = valueSB
                 results[recoSB]['sideCount'] = side
                 # get the shifts effect on alpha
                 for unc in shiftTypes:
-                    err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alpha)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alpha))/2.
-                    if err and alpha: uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/alpha
+                    err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alphaSR)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alphaSR))/2.
+                    if err and alphaSR:
+                        uncerr[unc][(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/alphaSR
+                        uncerr_store[unc]['datadriven_{0}'.format(reco)] = err/alphaSR
+                    err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alphaSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alphaSB))/2.
+                    if err and alphaSB:
+                        uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/alphaSB
+                        uncerr_store[unc]['datadriven_{0}'.format(recoSB)] = err/alphaSB
+
             else:
                 for proc in backgrounds:
                     value,err = getCount(counters,proc,'new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
@@ -282,7 +330,9 @@ for mode in modes:
                 # get the shifts effect on signal
                 for unc in shiftTypes:
                     err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-totalValue)+abs(allShifts[unc+'Down'][mode][mass][reco][proc]-totalValue))/2.
-                    if err and totalValue: uncerr[unc][((proc,),(era,),(analysis,),(reco,))] = 1+err/totalValue
+                    if err and totalValue:
+                        uncerr[unc][((proc,),(era,),(analysis,),(reco,))] = 1+err/totalValue
+                        uncerr_store[unc]['{0}_{1}'.format(proc,reco)] = err/totalValue
                 # sideband
                 limits.setExpected(proc,era,analysis,recoSB,totalValueSB)
                 if totalValueSB: staterr[((proc,),(era,),(analysis,),(recoSB,))] = 1.+err2SB**0.5/totalValueSB
@@ -291,7 +341,9 @@ for mode in modes:
                 # get the shifts effect on signal
                 for unc in shiftTypes:
                     err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
-                    if err and totalValueSB: uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = 1+err/totalValueSB
+                    if err and totalValueSB:
+                        uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = 1+err/totalValueSB
+                        uncerr_store[unc]['{0}_{1}'.format(proc,recoSB)] = err/totalValueSB
             obs = getCount(counters,'data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
             limits.setObserved(era,analysis,reco,obs[0])
             results[reco]['observed'] = obs[0]
@@ -300,6 +352,9 @@ for mode in modes:
             limits.setObserved(era,analysis,recoSB,obs[0])
             results[recoSB]['observed'] = obs[0]
             dumpResults(results,'Hpp4l','{0}/{1}'.format(mode,mass))
+
+        # dump the shift uncertainties
+        dumpResults(uncerr_store,analysis,'shiftUncertainties_{0}_{1}'.format(mode,mass))
 
         # systematics
         addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,4)
