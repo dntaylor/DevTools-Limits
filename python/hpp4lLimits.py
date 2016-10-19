@@ -181,7 +181,7 @@ for shift in shifts[1:]:
                 # get the shifts effect on alpha
                 #results[reco]['alpha'] = getAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
                 #results[recoSB]['alpha'] = getAlphaPrimeCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
-                results[reco]['alpha'],results[recoSB]['alpha'] = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=2,shift=shift,alphaOnly=True)
+                results[reco]['alpha'],results[recoSB]['alpha'] = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>2 or reco[-2:]=='tt' or reco[:2]=='tt',shift=shift,alphaOnly=True)
                 # PP
                 for proc in signals:
                     results[reco][proc] = 0.
@@ -248,7 +248,7 @@ for mode in modes:
             hpphmm = 'hpp{0}hmm{1}'.format(modeMap[mode][0],modeMap[mode][1])
             if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
                 # dual alpha
-                valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>=3)
+                valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphmm,reco),datadriven=reco.count('t')>2 or reco[-2:]=='tt' or reco[:2]=='tt')
                 limits.setExpected('datadriven',era,analysis,reco,valueSR)
                 limits.setExpected('datadriven',era,analysis,recoSB,valueSB)
                 limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
