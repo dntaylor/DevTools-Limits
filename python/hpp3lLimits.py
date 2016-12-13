@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%
 
 blind = False
 doShifts = True
-readUncerr = True # read from file rather than compute on the fly
+readUncerr = False # read from file rather than compute on the fly
 
 # define cards to create
 modes = ['ee100','em100','et100','mm100','mt100','tt100','BP1','BP2','BP3','BP4']
