@@ -275,13 +275,15 @@ for mode in modes:
                         if 'datadriven_{0}'.format(recoSB) in uncerr_store[unc]:
                             uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+uncerr_store[unc]['datadriven_{0}'.format(recoSB)]
                     else:
-                        err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alphaSR)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alphaSR))/2.
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alphaSR)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alphaSR))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-allShifts[unc+'Down'][mode][mass][reco]['alpha']))/2.
                         if err and alphaSR:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,),(reco,))] = 1+err/alphaSR
+                            uncerr[unc][(('datadriven',),(era,),(analysis,),(reco,))] = min([1+err/alphaSR,2])
                             uncerr_store[unc]['datadriven_{0}'.format(reco)] = err/alphaSR
-                        err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alphaSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alphaSB))/2.
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alphaSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alphaSB))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-allShifts[unc+'Down'][mode][mass][recoSB]['alpha']))/2.
                         if err and alphaSB:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = 1+err/alphaSB
+                            uncerr[unc][(('datadriven',),(era,),(analysis,),(recoSB,))] = min([1+err/alphaSB,2])
                             uncerr_store[unc]['datadriven_{0}'.format(recoSB)] = err/alphaSB
 
             else:
@@ -315,9 +317,10 @@ for mode in modes:
                         if '{0}_{1}'.format(proc,reco) in uncerr_store[unc]:
                             uncerr[unc][((proc,),(era,),(analysis,),(reco,))] = 1+uncerr_store[unc]['{0}_{1}'.format(proc,reco)]
                     else:
-                        err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-totalValue)+abs(allShifts[unc+'Down'][mode][mass][reco][proc]-totalValue))/2.
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-totalValue)+abs(allShifts[unc+'Down'][mode][mass][reco][proc]-totalValue))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-allShifts[unc+'Down'][mode][mass][reco][proc]))/2.
                         if err and totalValue:
-                            uncerr[unc][((proc,),(era,),(analysis,),(reco,))] = 1+err/totalValue
+                            uncerr[unc][((proc,),(era,),(analysis,),(reco,))] = min([1+err/totalValue,2])
                             uncerr_store[unc]['{0}_{1}'.format(proc,reco)] = err/totalValue
                 # sideband
                 limits.setExpected(proc,era,analysis,recoSB,totalValueSB)
@@ -330,9 +333,10 @@ for mode in modes:
                         if '{0}_{1}'.format(proc,recoSB) in uncerr_store[unc]:
                             uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = 1+uncerr_store[unc]['{0}_{1}'.format(proc,recoSB)]
                     else:
-                        err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-allShifts[unc+'Down'][mode][mass][recoSB][proc]))/2.
                         if err and totalValueSB:
-                            uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = 1+err/totalValueSB
+                            uncerr[unc][((proc,),(era,),(analysis,),(recoSB,))] = min([1+err/totalValueSB,2])
                             uncerr_store[unc]['{0}_{1}'.format(proc,recoSB)] = err/totalValueSB
             obs = getCount(counters,'data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphmm,reco))
             limits.setObserved(era,analysis,reco,obs[0])
