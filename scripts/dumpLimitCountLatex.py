@@ -20,7 +20,6 @@ Benchmark                                & Channel & Assoc. Prod.  & Pair Prod. 
 
 {rows}
 
-\\hline
     \\end{{tabular}}
     \\label{{tab:yields{mass}}}
 \\end{{table}}
@@ -39,7 +38,6 @@ Benchmark                                & Channel & Assoc. Prod.  & Pair Prod. 
 
 {rows}
 
-\\hline
     \\end{{tabular}}
     \\label{{tab:yields{mass}}}
 \\end{{table}}
