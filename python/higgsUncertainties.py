@@ -18,19 +18,13 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     ############
     ### Lumi ###
     ############
-    # lumi 2.7% for 2015 and 6.2% for 2016
-    # 2.3% correlated, 5.8% (1.5%) uncorrelated 2016 (2015)
+    # lumi 2.7% for 2015 and 2.6% for 2016
     # https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM#CurRec
     lumisyst = {
-        (systproc,('13TeV80X',),('all',),('all',)): 1.023,
-        #(systproc,('13TeV76X',),('all',),('all',)): 1.023,
-    }
-    lumistabilitysyst = {
-        (systproc,('13TeV80X',),('all',),('all',)): 1.058,
-        #(systproc,('13TeV76X',),('all',),('all',)): 1.015,
+        (systproc,('13TeV80X',),('all',),('all',)): 1.026,
+        #(systproc,('13TeV76X',),('all',),('all',)): 1.027,
     }
     limits.addSystematic('lumi','lnN',systematics=lumisyst)
-    limits.addSystematic('lumi_stability_{era}','lnN',systematics=lumistabilitysyst)
 
     ################
     ### Electron ###
@@ -45,12 +39,13 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
     # electron charge misid 4%
-    eleccharge = {}
-    for c in range(nl):
-        systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1]+[chan+'_SB' for chan in recoChans if chan.count('e')==c+1])
-        if not systChans: continue
-        eleccharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.04**2))
-    if eleccharge: limits.addSystematic('elec_charge','lnN',systematics=eleccharge)
+    # TODO update
+    #eleccharge = {}
+    #for c in range(nl):
+    #    systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1]+[chan+'_SB' for chan in recoChans if chan.count('e')==c+1])
+    #    if not systChans: continue
+    #    eleccharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.04**2))
+    #if eleccharge: limits.addSystematic('elec_charge','lnN',systematics=eleccharge)
 
     ############
     ### Muon ###
@@ -73,21 +68,21 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     ###########
     ### Tau ###
     ###########
-    # taus id 6%
+    # taus id 5% (SF 0.95)
     # https://twiki.cern.ch/twiki/bin/view/CMS/TauIDRecommendation13TeV
     tausyst = {}
     for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1]+[chan+'_SB' for chan in recoChans if chan.count('t')==c+1])
         if not systChans: continue
-        tausyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.06**2))
+        tausyst[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.05**2))
     if tausyst: limits.addSystematic('tau_id','lnN',systematics=tausyst)
 
-    # taus charge misid 2.2%
+    # taus charge misid 2% (SF 1)
     taucharge = {}
     for c in range(nl):
         systChans = tuple([chan for chan in recoChans if chan.count('t')==c+1]+[chan+'_SB' for chan in recoChans if chan.count('t')==c+1])
         if not systChans: continue
-        taucharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.022**2))
+        taucharge[(systproc,('all',),('all',),systChans)] = 1.+math.sqrt((c+1)*(0.02**2))
     if taucharge: limits.addSystematic('tau_charge','lnN',systematics=taucharge)
 
     ##############

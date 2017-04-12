@@ -14,7 +14,7 @@ from DevTools.Limits.higgsUncertainties import addUncertainties
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 blind = False
-doShifts = True
+doShifts = False
 readUncerr = False # read from file rather than compute on the fly
 
 # define cards to create
@@ -39,6 +39,7 @@ samples = ['TTV','VVV','ZZ','WZ']
 allsamples = ['W','T','TT','TTV','Z','WW','VVV','ZZ','WZ']
 signalsAP = ['HppHm{0}GeV'.format(mass) for mass in masses]
 signalsPP = ['HppHmm{0}GeV'.format(mass) for mass in masses]
+signalsPPR = ['HppHmmR{0}GeV'.format(mass) for mass in masses]
 backgrounds = ['datadriven']
 
 datadrivenSamples = []
@@ -153,6 +154,7 @@ for shift in shifts[1:]:
     if readUncerr: continue
     signalsAP = ['HppHm{0}GeV'.format(mass) for mass in masses]
     signalsPP = ['HppHmm{0}GeV'.format(mass) for mass in masses]
+    signalsPPR = ['HppHmmR{0}GeV'.format(mass) for mass in masses]
     # counters
     counters = {}
     for s in allsamples:
@@ -167,6 +169,10 @@ for shift in shifts[1:]:
         counters[s+shift] = Counter('Hpp3l')
         counters[s+shift].addProcess(s,sigMap[s],signal=True,shift=shift)
 
+    for s in signalsPPR:
+        counters[s+shift] = Counter('Hpp3l')
+        counters[s+shift].addProcess(s,sigMap[s],signal=True,shift=shift)
+
     counters['data'+shift] = Counter('Hpp3l')
     counters['data'+shift].addProcess('data',sigMap['data'],shift=shift)
     # get values
@@ -178,6 +184,7 @@ for shift in shifts[1:]:
             recoChans = getRecoChans(mode)
             signalsAP = ['HppHm{0}GeV'.format(mass)]
             signalsPP = ['HppHmm{0}GeV'.format(mass)]
+            signalsPPR = ['HppHmmR{0}GeV'.format(mass)]
             results = {}
             for reco in recoChans:
                 recoSB = reco + '_SB'
@@ -186,7 +193,7 @@ for shift in shifts[1:]:
                 # for 100%, get num taus, for benchmarks, based on reco
                 hpphm = 'hpp{0}'.format(modeMap[mode][0])
                 # get the shifts effect on alpha
-                results[reco]['alpha'], results[recoSB]['alpha'] = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=reco.count('t')>=2 or reco[-1]=='t',shift=shift,alphaOnly=True)
+                results[reco]['alpha'], results[recoSB]['alpha'] = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True,shift=shift,alphaOnly=True)#reco.count('t')>=2 or reco[-1]=='t',shift=shift,alphaOnly=True)
                 # AP
                 for proc in signalsAP:
                     results[reco][proc] = 0.
@@ -207,10 +214,21 @@ for shift in shifts[1:]:
                         scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
                         results[reco][proc] += scale*getCount(counters,proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen),shift=shift)[0]
                         results[recoSB][proc] += scale*getCount(counters,proc,'new/allSideband/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen),shift=shift)[0]
+                # PPR
+                for proc in signalsPPR:
+                    results[reco][proc] = 0.
+                    results[recoSB][proc] = 0.
+                    for gen in genRecoMap:
+                        if len(gen)!=4: continue # 3 for AP, 4 for PP
+                        if reco not in genRecoMap[gen]: continue
+                        scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
+                        results[reco][proc] += scale*getCount(counters,proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen),shift=shift)[0]
+                        results[recoSB][proc] += scale*getCount(counters,proc,'new/allSideband/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen),shift=shift)[0]
             allShifts[shift][mode][mass] = results
 
 signalsAP = ['HppHm{0}GeV'.format(mass) for mass in masses]
 signalsPP = ['HppHmm{0}GeV'.format(mass) for mass in masses]
+signalsPPR = ['HppHmmR{0}GeV'.format(mass) for mass in masses]
 # counters
 counters = {}
 for s in allsamples:
@@ -222,6 +240,10 @@ for s in signalsAP:
     counters[s].addProcess(s,sigMap[s],signal=True)
 
 for s in signalsPP:
+    counters[s] = Counter('Hpp3l')
+    counters[s].addProcess(s,sigMap[s],signal=True)
+
+for s in signalsPPR:
     counters[s] = Counter('Hpp3l')
     counters[s].addProcess(s,sigMap[s],signal=True)
 
@@ -237,6 +259,7 @@ for mode in modes:
         limits.addAnalysis('Hpp3l')
         limits.addAnalysis('Hpp3lAP')
         limits.addAnalysis('Hpp3lPP')
+        limits.addAnalysis('Hpp3lPPR')
         
         recoChans = getRecoChans(mode)
         for reco in recoChans:
@@ -245,7 +268,8 @@ for mode in modes:
 
         signalsAP = ['HppHm{0}GeV'.format(mass)]
         signalsPP = ['HppHmm{0}GeV'.format(mass)]
-        for sig in signalsAP+signalsPP:
+        signalsPPR = ['HppHmmR{0}GeV'.format(mass)]
+        for sig in signalsAP+signalsPP+signalsPPR:
             limits.addProcess(sig,signal=True)
         
         for background in backgrounds:
@@ -270,21 +294,23 @@ for mode in modes:
             hpphm = 'hpp{0}'.format(modeMap[mode][0])
             if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
                 # dual alpha
-                valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=reco.count('t')>=2 or reco[-1]=='t')
+                valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True)#reco.count('t')>=2 or reco[-1]=='t')
                 limits.setExpected('datadriven',era,analysis,reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'AP',reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'PP',reco,valueSR)
+                limits.setExpected('datadriven',era,analysis+'PPR',reco,valueSR)
                 limits.setExpected('datadriven',era,analysis,recoSB,valueSB)
                 limits.setExpected('datadriven',era,analysis+'AP',recoSB,valueSB)
                 limits.setExpected('datadriven',era,analysis+'PP',recoSB,valueSB)
+                limits.setExpected('datadriven',era,analysis+'PPR',recoSB,valueSB)
                 limits.addSystematic('alpha_{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=reco),
                                      'gmN {0}'.format(int(side)),
                                      systematics={
-                                         (('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,)):alphaSR,
-                                         (('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(recoSB,)):alphaSB,
+                                         (('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,)):alphaSR,
+                                         (('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,)):alphaSB,
                                      })
-                if alphaSR: staterr[(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = 1+errSR/alphaSR
-                if alphaSB: staterr[(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(recoSB,))] = 1+errSB/alphaSB
+                if alphaSR: staterr[(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,))] = 1+errSR/alphaSR
+                if alphaSB: staterr[(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,))] = 1+errSB/alphaSB
                 results[reco]['alpha'] = alphaSR
                 results[reco]['alphaError'] = errSR
                 results[reco]['expected'] = valueSR
@@ -297,19 +323,19 @@ for mode in modes:
                 for unc in shiftTypes:
                     if readUncerr:
                         if 'datadriven_{0}'.format(reco) in uncerr_store[unc]:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = 1+uncerr_store[unc]['datadriven_{0}'.format(reco)]
+                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,))] = 1+uncerr_store[unc]['datadriven_{0}'.format(reco)]
                         if 'datadriven_{0}'.format(recoSB) in uncerr_store[unc]:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(recoSB,))] = 1+uncerr_store[unc]['datadriven_{0}'.format(recoSB)]
+                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,))] = 1+uncerr_store[unc]['datadriven_{0}'.format(recoSB)]
                     else:
                         #err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-alphaSR)+abs(allShifts[unc+'Down'][mode][mass][reco]['alpha']-alphaSR))/2.
                         err = (abs(allShifts[unc+'Up'][mode][mass][reco]['alpha']-allShifts[unc+'Down'][mode][mass][reco]['alpha']))/2.
                         if err and alphaSR:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = min([1+err/alphaSR,2])
+                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,))] = min([1+err/alphaSR,2])
                             if not readUncerr: uncerr_store[unc]['datadriven_{0}'.format(reco)] = err/alphaSR
                         #err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-alphaSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB]['alpha']-alphaSB))/2.
                         err = (abs(allShifts[unc+'Up'][mode][mass][recoSB]['alpha']-allShifts[unc+'Down'][mode][mass][recoSB]['alpha']))/2.
                         if err and alphaSB:
-                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',),(recoSB,))] = min([1+err/alphaSB,2])
+                            uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,))] = min([1+err/alphaSB,2])
                             uncerr_store[unc]['datadriven_{0}'.format(recoSB)] = err/alphaSB
 
             else:
@@ -318,7 +344,8 @@ for mode in modes:
                     limits.setExpected(proc,era,analysis,reco,value)
                     limits.setExpected(proc,era,analysis+'AP',reco,value)
                     limits.setExpected(proc,era,analysis+'PP',reco,value)
-                    if value: staterr[((proc,),(era,),(analysis,analysis+'AP',analysis+'PP',),(reco,))] = 1+err/value
+                    limits.setExpected(proc,era,analysis+'PPR',reco,value)
+                    if value: staterr[((proc,),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,))] = 1+err/value
             # AP
             for proc in signalsAP:
                 totalValue = 0.
@@ -419,16 +446,67 @@ for mode in modes:
                         if err and totalValueSB:
                             uncerr[unc][((proc,),(era,),(analysis,analysis+'PP',),(recoSB,))] = min([1+err/totalValueSB,2])
                             uncerr_store[unc]['{0}_{1}'.format(proc,reco)] = err/totalValueSB
+            # PPR
+            for proc in signalsPPR:
+                totalValue = 0.
+                err2 = 0.
+                totalValueSB = 0.
+                err2SB = 0.
+                for gen in genRecoMap:
+                    if len(gen)!=4: continue # 3 for AP, 4 for PP
+                    if reco not in genRecoMap[gen]: continue
+                    value,err = getCount(counters,proc,'new/allMassWindow/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
+                    scale = scales[mode].scale_Hpp4l(gen[:2],gen[2:])
+                    totalValue += scale*value
+                    err2 += (scale*err)**2
+                    # sb values
+                    value,err = getCount(counters,proc,'new/allSideband/{0}/{1}/{2}/gen_{3}'.format(mass,hpphm,reco,gen))
+                    totalValueSB += scale*value
+                    err2SB += (scale*err)**2
+                limits.setExpected(proc,era,analysis+'PPR',reco,totalValue)
+                if totalValue: staterr[((proc,),(era,),(analysis+'PPR',),(reco,))] = 1.+err2**0.5/totalValue
+                results[reco]['ppR'] = totalValue
+                results[reco]['ppRError'] = err2**0.5
+                # get the shifts effect on signal
+                for unc in shiftTypes:
+                    if readUncerr:
+                        if '{0}_{1}'.format(proc,reco) in uncerr_store[unc]:
+                            uncerr[unc][((proc,),(era,),(analysis+'PPR',),(reco,))] = 1+uncerr_store[unc]['{0}_{1}'.format(proc,reco)]
+                    else:
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-totalValue)+abs(allShifts[unc+'Down'][mode][mass][reco][proc]-totalValue))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][reco][proc]-allShifts[unc+'Down'][mode][mass][reco][proc]))/2.
+                        if err and totalValue:
+                            uncerr[unc][((proc,),(era,),(analysis+'PPR',),(reco,))] = min([1+err/totalValue,2])
+                            uncerr_store[unc]['{0}_{1}'.format(proc,reco)] = err/totalValue
+                # sideband components
+                limits.setExpected(proc,era,analysis+'PPR',recoSB,totalValueSB)
+                if totalValueSB: staterr[((proc,),(era,),(analysis+'PPR',),(recoSB,))] = 1.+err2SB**0.5/totalValueSB
+                results[recoSB]['ppR'] = totalValue
+                results[recoSB]['ppRError'] = err2**0.5
+                # get the shifts effect on signal
+                for unc in shiftTypes:
+                    if readUncerr:
+                        if '{0}_{1}'.format(proc,recoSB) in uncerr_store[unc]:
+                            uncerr[unc][((proc,),(era,),(analysis+'PPR',),(recoSB,))] = 1+uncerr_store[unc]['{0}_{1}'.format(proc,recosb)]
+                    else:
+                        #err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-totalValueSB)+abs(allShifts[unc+'Down'][mode][mass][recoSB][proc]-totalValueSB))/2.
+                        err = (abs(allShifts[unc+'Up'][mode][mass][recoSB][proc]-allShifts[unc+'Down'][mode][mass][recoSB][proc]))/2.
+                        if err and totalValueSB:
+                            uncerr[unc][((proc,),(era,),(analysis+'PPR',),(recoSB,))] = min([1+err/totalValueSB,2])
+                            uncerr_store[unc]['{0}_{1}'.format(proc,reco)] = err/totalValueSB
+            # observed
             obs = getCount(counters,'data','new/allMassWindow/{0}/{1}/{2}'.format(mass,hpphm,reco))
             limits.setObserved(era,analysis,reco,obs[0])
             limits.setObserved(era,analysis+'AP',reco,obs[0])
             limits.setObserved(era,analysis+'PP',reco,obs[0])
+            limits.setObserved(era,analysis+'PPR',reco,obs[0])
             results[reco]['observed'] = obs[0]
             # sideband
             obs = getCount(counters,'data','new/allSideband/{0}/{1}/{2}'.format(mass,hpphm,reco))
             limits.setObserved(era,analysis,recoSB,obs[0])
             limits.setObserved(era,analysis+'AP',recoSB,obs[0])
             limits.setObserved(era,analysis+'PP',recoSB,obs[0])
+            limits.setObserved(era,analysis+'PPR',recoSB,obs[0])
             results[recoSB]['observed'] = obs[0]
             dumpResults(results,'Hpp3l','{0}/{1}'.format(mode,mass))
 
@@ -436,11 +514,12 @@ for mode in modes:
         if not readUncerr: dumpResults(uncerr_store,analysis,'shiftUncertainties_{0}_{1}'.format(mode,mass))
 
         # systematics
-        addUncertainties(limits,staterr,uncerr,recoChans,signalsAP+signalsPP,backgrounds,3)
+        addUncertainties(limits,staterr,uncerr,recoChans,signalsAP+signalsPP+signalsPPR,backgrounds,3)
 
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'],blind=blind)
+        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'],processes=signalsAP+signalsPP+backgrounds,blind=blind)
         limits.printCard('{0}/{1}AP.txt'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds,blind=blind)
         limits.printCard('{0}/{1}PP.txt'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}PPR.txt'.format(directory,mass),analyses=['Hpp3lPPR'],processes=signalsPPR+backgrounds,blind=blind)
