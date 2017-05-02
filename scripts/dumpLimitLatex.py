@@ -9,10 +9,10 @@ class LimitsTex:
     tablePAS = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Observed (expected) 95\\% CL limits for associated (AP) and pair production (PP) and the combined limit.}}
-    \\begin{{tabular}}{{| c | c | c | c |}}
+    \\topcaption{{Observed (expected) 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
-        Benchmark & AP [GeV] & PP [GeV] & Combined [GeV] \\\\ \\hline
+        Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -24,10 +24,10 @@ class LimitsTex:
     table = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Expected 95\\% CL limits for associated (AP) and pair production (PP) and the combined limit.}}
-    \\begin{{tabular}}{{| c | c | c | c |}}
+    \\topcaption{{Expected 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
-        Benchmark & AP [GeV] & PP [GeV] & Combined [GeV] \\\\ \\hline
+        Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -38,10 +38,11 @@ class LimitsTex:
     table2 = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Expected 95\\% CL limits for three and four lepton final states.}}
-    \\begin{{tabular}}{{| c | c | c | c |}}
+    \\topcaption{{Expected 95\\% CL limits for three and four lepton final states
+        for the associated (AP), pair (PP), and right-handed pair ($\\rm{{PP_{{R}}}}$) production modes.}}
+    \\begin{{tabular}}{{| c | c | c | c | c | c |}}
         \\hline
-        Benchmark & $3\\ell$ AP [GeV] & $3\\ell$ PP [GeV] & $4\\ell$ PP [GeV] \\\\ \\hline
+        Benchmark & $3\\ell$ AP [GeV] & $3\\ell$ PP [GeV] & $4\\ell$ PP [GeV] & $3\\ell$ $\\rm{{PP_{{R}}}}$ [GeV] & $4\\ell$ $\\rm{{PP_{{R}}}}$ [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -52,10 +53,10 @@ class LimitsTex:
     tableObs = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Observed 95\\% CL limits for associated (AP) and pair production (PP) and the combined limit.}}
-    \\begin{{tabular}}{{| c | c | c | c |}}
+    \\topcaption{{Observed 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
-        Benchmark & AP [GeV] & PP [GeV] & Combined [GeV] \\\\ \\hline
+        Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -66,10 +67,11 @@ class LimitsTex:
     tableObs2 = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Observed 95\\% CL limits for three and four lepton final states.}}
-    \\begin{{tabular}}{{| c | c | c | c |}}
+    \\topcaption{{Observed 95\\% CL limits for three and four lepton final states
+        for the associated (AP), pair (PP), and right-handed pair ($\\rm{{PP_{{R}}}}$) production modes.}}
+    \\begin{{tabular}}{{| c | c | c | c | c | c |}}
         \\hline
-        Benchmark & $3\\ell$ AP [GeV] & $3\\ell$ PP [GeV] & $4\\ell$ PP [GeV] \\\\ \\hline
+        Benchmark & $3\\ell$ AP [GeV] & $3\\ell$ PP [GeV] & $4\\ell$ PP [GeV] & $3\\ell$ $\\rm{{PP_{{R}}}}$ [GeV] & $4\\ell$ $\\rm{{PP_{{R}}}}$ [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -79,13 +81,13 @@ class LimitsTex:
 
 
     rowPAS = '''
-        {tex:40} & {HppAP} ({HppAPExp}) & {HppPP} ({HppPPExp}) & {HppComb} ({HppCombExp}) \\\\'''
+        {tex:40} & {HppAP} ({HppAPExp}) & {HppPP} ({HppPPExp}) & {HppPPR} ({HppPPRExp}) & {HppComb} ({HppCombExp}) \\\\'''
 
     row = '''
-        {tex:40} & {HppAP} & {HppPP} & {HppComb} \\\\'''
+        {tex:40} & {HppAP} & {HppPP} & {HppPPR} & {HppComb} \\\\'''
 
     row2 = '''
-        {tex:40} & {Hpp3lAP} & {Hpp3lPP} & {Hpp4l} \\\\'''
+        {tex:40} & {Hpp3lAP} & {Hpp3lPP} & {Hpp4l}  & {Hpp3lR} & {Hpp4lR} \\\\'''
 
 benchmarks = {
     'ee100': {'tex': '100\\% $\\Hpmpm \\rightarrow \\Pe\\Pe$',},

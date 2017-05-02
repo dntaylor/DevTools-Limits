@@ -14,7 +14,7 @@ from DevTools.Limits.higgsUncertainties import addUncertainties
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 blind = False
-doShifts = False
+doShifts = True
 readUncerr = False # read from file rather than compute on the fly
 
 # define cards to create
@@ -48,6 +48,7 @@ for s in samples + ['data']:
 
 counters = {}
 shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
+shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn']
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']
