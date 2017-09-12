@@ -18,6 +18,7 @@ class Limits(object):
         self.channels = []    # analysis channel
         self.observed = {}    # there is one observable per era/analysis/channel combination
         self.processes = {}   # background and signal processes
+        self.groups = {}      # groups of systematics
         self.signals = []
         self.backgrounds = []
         self.expected = {}    # expected yield, one per process/era/analysis/chanel combination
@@ -94,12 +95,14 @@ class Limits(object):
         The supported modes are:
             'lnN'  : log normal uncertainty shape
             'gmN X': gamma function uncertainty shape
+            'shape': for shape based uncertainties
         The values are set with the 'systematics' arguments. They are dictionaries with the form:
             systematics = {
                (processes,eras,analyses,channels) : value,
             }
         where the key is a tuple of process, era, analysis, and channel the systematic covers, each
         of which is another tuple of the components this sytematic covers.
+        'value' is either a number for a rate systematic or a TH1 histogram for a shape uncertainty
         '''
         if systname in self.systematics:
             logging.warning('Systematic {0} already added.'.format(systname))
@@ -116,6 +119,10 @@ class Limits(object):
                     'mode'  : mode,
                     'values': systematics,
                 }
+
+    def addGroup(self,groupname,*systnames):
+        '''Add a group name for a list of systematics'''
+        self.groups[groupname] = systnames
 
     def getSystematic(self,systname,process,era,analysis,channel):
         '''Return the systematic value for a given systematic/process/era/analysis/channel combination.'''
@@ -180,10 +187,25 @@ class Limits(object):
         if goodToAdd:
             self.observed[(era,analysis,channel)] = value
 
-    def getObserved(self,era,analysis,channel,blind=True):
+    def getObserved(self,era,analysis,channel,blind=True,addSignal=False):
         '''Get the observed value. If blinded returns the sum of the expected background.'''
         if blind:
-            return sum([self.getExpected(process,era,analysis,channel) for process in self.backgrounds])
+            bgs = self.backgrounds
+            if addSignal: bgs += self.signals
+            exp = [self.getExpected(process,era,analysis,channel) for process in bgs]
+            if len(exp) and isinstance(exp[0],ROOT.TH1):
+                hists = ROOT.TList()
+                for e in exp:
+                    hists.Add(e)
+                if hists.IsEmpty():
+                    return 0.
+                else:
+                    hist = hists[0].Clone('h_exp')
+                    hist.Reset()
+                    hist.Merge(hists)
+                    return hist
+            else:
+                return sum(exp)
         else:
             key = (era,analysis,channel)
             return self.observed[key] if key in self.observed else 0.
@@ -204,7 +226,7 @@ class Limits(object):
         val = self.expected[key] if key in self.expected else 0.
         return val if val else 1.0e-10
 
-    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True):
+    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True,addSignal=False):
         '''
         Print a datacard to file.
         Select the eras, analyses, channels you want to include.
@@ -222,7 +244,7 @@ class Limits(object):
         if processes==['all']: processes = self.processes.keys()
         signals = [x for x in self.signals if x in processes]
         backgrounds = [x for x in self.backgrounds if x in processes]
-
+        shapes = []
 
         # setup bins
         bins = ['bin']
@@ -231,8 +253,16 @@ class Limits(object):
         for era in eras:
             for analysis in analyses:
                 for channel in channels:
-                    bins += [binName.format(era=era,analysis=analysis,channel=channel)]
-                    observations += ['{0}'.format(self.getObserved(era,analysis,channel,blind=blind))]
+                    blabel = binName.format(era=era,analysis=analysis,channel=channel)
+                    bins += [blabel]
+                    obs = self.getObserved(era,analysis,channel,blind=blind,addSignal=addSignal)
+                    if isinstance(obs,ROOT.TH1):
+                        label = 'data_obs_{0}'.format(blabel)
+                        obs.SetName(label)
+                        obs.SetTitle(label)
+                        shapes += [obs]
+                        obs = obs.Integral()
+                    observations += ['{0}'.format(obs)]
         imax = len(bins)-1
 
         # setup processes
@@ -250,10 +280,17 @@ class Limits(object):
                 for channel in channels:
                     for process in processesOrdered:
                         colpos += 1
-                        binsForRates[colpos] = '{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=channel)
+                        binsForRates[colpos] = binName.format(era=era,analysis=analysis,channel=channel)
                         processNames[colpos] = process
                         processNumbers[colpos] = '{0:<10}'.format(processesOrdered.index(process)-len(signals)+1)
-                        rates[colpos] = '{0:<10.4g}'.format(self.getExpected(process,era,analysis,channel))
+                        exp = self.getExpected(process,era,analysis,channel)
+                        if isinstance(exp,ROOT.TH1):
+                            label = '{0}_{1}'.format(processNames[colpos],binsForRates[colpos])
+                            exp.SetName(label)
+                            exp.SetTitle(label)
+                            shapes += [exp]
+                            exp = exp.Integral()
+                        rates[colpos] = '{0:<10.4g}'.format(exp)
 
         # setup nuissances
         systs = {}
@@ -276,7 +313,18 @@ class Limits(object):
                     for channel in channels:
                         for process in processesOrdered:
                             key = (era,analysis,channel,process)
-                            thisRow += ['{0:<10.4g}'.format(combinedSysts[syst]['systs'][key]) if key in combinedSysts[syst]['systs'] and combinedSysts[syst]['systs'][key]!=1 else '-']
+                            s = '-'
+                            if key in combinedSysts[syst]['systs']:
+                                s = combinedSysts[syst]['systs'][key]
+                                if s==1:
+                                    s = '-'
+                                elif isinstance(s,ROOT.TH1):
+                                    label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                    s.SetName(label)
+                                    s.SetTitle(label)
+                                    shapes += [s]
+                                    s = '1'
+                            thisRow += ['{0:<10.4g}'.format(s) if not isinstance(s,basestring) else s]
             systRows += [thisRow]
 
         kmax = len(systRows)
@@ -297,7 +345,11 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # shape information
-            f.write('shapes * * FAKE\n')
+            if shapes:
+                for b in bins[1:]:
+                    f.write('shapes * {0} {1} $PROCESS_{0} $PROCESS_{0}_$SYSTEMATIC\n'.format(b,filename.replace('.txt','.root')))
+            else:
+                f.write('shapes * * FAKE\n')
             f.write('-'*lineWidth+'\n')
             
             # observation
@@ -318,5 +370,15 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # nuissance categories
+            for group in self.groups:
+                f.write('{0} group = {1}'.format(group,' '.join(self.groups[group])))
+
+        # shape file
+        if shapes:
+            outfile = ROOT.TFile.Open(filename.replace('.txt','.root'),'RECREATE')
+            for shape in shapes:
+                shape.Write('',ROOT.TObject.kOverwrite)
+            outfile.Write()
+            outfile.Close()
 
 
