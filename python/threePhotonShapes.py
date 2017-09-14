@@ -20,6 +20,7 @@ binned = True
 addSignal = True
 wsname = 'w'
 doParametric = True
+binning = [35,150,500]
 
 # setup
 sampleMap = getSampleMap()
@@ -37,7 +38,7 @@ for proc in backgrounds+signals+data:
 def getBinned(proc):
     hists = ROOT.TList()
     for sample in sampleMap[proc]:
-        hist = wrappers[sample].getTempHist(sample,selection,'1' if proc=='data' else scalefactor,'ggg_mass',[40,100,500])
+        hist = wrappers[sample].getTempHist(sample,selection,'1' if proc=='data' else scalefactor,'ggg_mass',binning)
         hists.Add(hist)
     if hists.IsEmpty():
         hist = 0
@@ -91,8 +92,8 @@ limits.addAnalysis('ThreePhoton')
 limits.addChannel('ggg')
 
 if doParametric:
-    limits.addMH(150,500)
-    limits.addX(150,500)
+    limits.addMH(*binning[1:])
+    limits.addX(*binning[1:])
 
 if doParametric:
     limits.addProcess('sig',signal=True)
@@ -111,18 +112,20 @@ if doParametric:
     # prepare model with initial fit
     logging.info('Building background model')
     ws = ROOT.RooWorkspace('bg')
-    ws.factory('x[150, 500]')
+    ws.factory('x[{0}, {1}]'.format(*binning[1:]))
     model = Models.Exponential('bg')
     hist = sumHists('bg',*[histMap[proc] for proc in backgrounds])
     results = model.fit(ws,hist,'bg',save=True)
     model.update(**{'lambda':[results['lambda_bg'],-5,0]})
+    integral = hist.Integral(1,hist.GetNbinsX())
+    model.setIntegral(integral)
     limits.setExpected('bg',era,analysis,reco,model)
 
     # TODO, fit gaussian to signal samples, for now hard coded for all but 250
     logging.info('Building signal model')
     ws = ROOT.RooWorkspace('sig')
-    ws.factory('x[150, 500]')
-    model = Models.BreitWigner('sig',mean=[250,150,500],sigma=[5,0,20])
+    ws.factory('x[{0}, {1}]'.format(*binning[1:]))
+    model = Models.BreitWigner('sig',mean=[250]+binning[1:],sigma=[5,0,20])
     hist = histMap['HToAG_250_150']
     results = model.fit(ws,hist,'sig',save=True)
     model = Models.BreitWignerSpline('sig',
@@ -131,6 +134,7 @@ if doParametric:
             'sigmas': [15,results['sigma_sig'],35,45],
         }
     )
+    model.setIntegral(hist.Integral())
     limits.setExpected('sig',era,analysis,reco,model)
 
 else:

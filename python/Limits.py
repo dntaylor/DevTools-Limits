@@ -334,7 +334,7 @@ class Limits(object):
                             #pdf = self.workspace.pdf(label)
                             #exp = pdf.getVal(argset)
                             #exp = pdf.createIntegral(argset).getVal()
-                            exp = 1
+                            exp = exp.getIntegral()
                         else:
                             logging.info('{0}: {1}'.format(label,exp))
                         # TODO: unbinned handling

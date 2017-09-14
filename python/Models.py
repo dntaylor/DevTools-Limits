@@ -44,6 +44,13 @@ class Model(object):
 
         return vals
 
+    def setIntegral(self,integral):
+        self.integral = integral
+
+    def getIntegral(self):
+        if hasattr(self,'integral'): return self.integral
+        return 1
+
 class Gaussian(Model):
 
     def __init__(self,name,**kwargs):
