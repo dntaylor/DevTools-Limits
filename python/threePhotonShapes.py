@@ -125,12 +125,13 @@ if doParametric:
     logging.info('Building signal model')
     ws = ROOT.RooWorkspace('sig')
     ws.factory('x[{0}, {1}]'.format(*binning[1:]))
-    model = Models.BreitWigner('sig',mean=[250]+binning[1:],sigma=[5,0,20])
+    model = Models.Voigtian('sig',mean=[250]+binning[1:],width=[5,0,20],sigma=[5,0,20])
     hist = histMap['HToAG_250_150']
     results = model.fit(ws,hist,'sig',save=True)
-    model = Models.BreitWignerSpline('sig',
+    model = Models.VoigtianSpline('sig',
         **{
             'means' : [150,250,350,450],
+            'widths': [15,results['width_sig'],35,45],
             'sigmas': [15,results['sigma_sig'],35,45],
         }
     )

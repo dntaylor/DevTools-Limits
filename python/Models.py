@@ -123,6 +123,49 @@ class BreitWignerSpline(Model):
         # build model
         ws.factory("BreitWigner::{0}(x, {1}, {2})".format(label,meanName,sigmaName))
 
+class Voigtian(Model):
+
+    def __init__(self,name,**kwargs):
+        super(self.__class__,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        meanName = 'mean_{0}'.format(label)
+        widthName = 'width_{0}'.format(label)
+        sigmaName = 'sigma_{0}'.format(label)
+        mean  = self.kwargs.get('mean',  [1,0,1000])
+        width = self.kwargs.get('width', [1,0,100])
+        sigma = self.kwargs.get('sigma', [1,0,100])
+        # variables
+        ws.factory('{0}[{1}, {2}, {3}]'.format(meanName,*mean))
+        ws.factory('{0}[{1}, {2}, {3}]'.format(widthName,*width))
+        ws.factory('{0}[{1}, {2}, {3}]'.format(sigmaName,*sigma))
+        # build model
+        ws.factory("Voigtian::{0}(x, {1}, {2}, {3})".format(label,meanName,widthName,sigmaName))
+
+class VoigtianSpline(Model):
+
+    def __init__(self,name,**kwargs):
+        super(self.__class__,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        meanName = 'mean_{0}'.format(label)
+        widthName = 'width_{0}'.format(label)
+        sigmaName = 'sigma_{0}'.format(label)
+        masses = self.kwargs.get('masses', [150,250,350,450])
+        means  = self.kwargs.get('means',  [150,250,350,450])
+        widths = self.kwargs.get('widths', [15,25,35,45])
+        sigmas = self.kwargs.get('sigmas', [15,25,35,45])
+        # splines
+        meanSpline  = ROOT.RooSpline1D(meanName,  meanName,  ws.var('MH'), len(masses), array('d',masses), array('d',means))
+        widthSpline = ROOT.RooSpline1D(widthName, widthName, ws.var('MH'), len(masses), array('d',masses), array('d',widths))
+        sigmaSpline = ROOT.RooSpline1D(sigmaName, sigmaName, ws.var('MH'), len(masses), array('d',masses), array('d',sigmas))
+        # import
+        getattr(ws, "import")(meanSpline, ROOT.RooFit.RecycleConflictNodes())
+        getattr(ws, "import")(widthSpline, ROOT.RooFit.RecycleConflictNodes())
+        getattr(ws, "import")(sigmaSpline, ROOT.RooFit.RecycleConflictNodes())
+        # build model
+        ws.factory("Voigtian::{0}(x, {1}, {2}, {3})".format(label,meanName,widthName,sigmaName))
+
 class Exponential(Model):
 
     def __init__(self,name,**kwargs):
