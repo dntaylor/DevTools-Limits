@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import numbers
 
 import ROOT
 
@@ -134,7 +135,9 @@ class Limits(object):
             }
         where the key is a tuple of process, era, analysis, and channel the systematic covers, each
         of which is another tuple of the components this sytematic covers.
-        'value' is either a number for a rate systematic or a TH1 histogram for a shape uncertainty
+        'value' is either a number for a rate systematic or a TH1 histogram for a shape uncertainty.
+        For asymmetric uncertainties, a tuple should be passed with the first the shift up
+        and the second the shift down.
         '''
         if systname in self.systematics:
             logging.warning('Systematic {0} already added.'.format(systname))
@@ -159,6 +162,7 @@ class Limits(object):
     def getSystematic(self,systname,process,era,analysis,channel):
         '''Return the systematic value for a given systematic/process/era/analysis/channel combination.'''
         # make sure it exists:
+        result = 1.
         for syst in self.systematics:
             fullSystName = syst.format(process=process,era=era,analysis=analysis,channel=channel)
             if fullSystName != systname: continue
@@ -170,8 +174,13 @@ class Limits(object):
                 if analysis not in s_analyses and 'all' not in s_analyses: continue
                 if channel not in s_channels and 'all' not in s_channels: continue
                 # return the value
-                return self.systematics[syst]['values'][syst_vals]
-        return 1.
+                result = self.systematics[syst]['values'][syst_vals]
+        if isinstance(result,ROOT.TH2):
+            result = self.__unwrap(result)
+        if isinstance(result,tuple) or isinstance(result,list):
+            if len(result)==2 and isinstance(result[0],ROOT.TH2):
+                result = (self.__unwrap(result[0]),self.__unwrap(result[1]),)
+        return result
 
     def __getSystematicRows(self,syst,processes,era,analysis,channel):
         '''
@@ -397,7 +406,29 @@ class Limits(object):
                                         datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), s)
                                         self.__wsimport(datahist)
                                     s = '1'
-                            thisRow += ['{0:<10.4g}'.format(s) if not isinstance(s,basestring) else s]
+                                elif (isinstance(s,tuple) or isinstance(s,list)) and len(s)==2:
+                                    if isinstance(s[0],ROOT.TH1):
+                                        label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        s[0].SetName(label_up)
+                                        s[0].SetTitle(label_up)
+                                        s[1].SetName(label_down)
+                                        s[1].SetTitle(label_down)
+                                        shapes += s
+                                        if saveWorkspace:
+                                            datahist_up = ROOT.RooDataHist(label_up, label_up, ROOT.RooArgList(self.workspace.var("x")), s[0])
+                                            datahist_down = ROOT.RooDataHist(label_down, label_down, ROOT.RooArgList(self.workspace.var("x")), s[1])
+                                            self.__wsimport(datahist_up)
+                                            self.__wsimport(datahist_down)
+                                        s = '1'
+                                    elif isinstance(s[0],numbers.Number):
+                                        s = '{0:>4.4g}/{1:<4.4g}'.format(*s)
+                                    else:
+                                        logging.error('Do not know how to handle {0}'.format(s))
+                                        raise
+                                elif isinstance(s,numbers.Number):
+                                    s = '{0:<10.4g}'.format(s)
+                            thisRow += [s]
             systRows += [thisRow]
 
         kmax = len(systRows)
@@ -409,7 +440,13 @@ class Limits(object):
             firstWidth = 40
             restWidth = 30
             def getline(row):
-                return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
+                try:
+                    return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
+                except:
+                    print row
+                    e = sys.exc_info()[0]
+                    print e
+                    raise
 
             # header
             f.write('imax {0} number of bins\n'.format(imax))
