@@ -36,6 +36,21 @@ class Limits(object):
             args += (ROOT.RooCmdArg(),)
         return getattr(self.workspace, 'import')(*args)
 
+    def __unwrap(self,hist):
+        '''Convert 2D histogram to 1D'''
+        nbins = hist.GetNbinsX()*hist.GetNbinsY()
+        result = ROOT.TH1F(hist.GetName(),hist.GetTitle(),nbins,0,nbins)
+        result.SetBinContent(0,hist.GetBinContent(0))
+        result.SetBinError(0,hist.GetBinError(0))
+        result.SetBinContent(nbins+1,hist.GetBinContent(nbins+1))
+        result.SetBinError(nbins+1,hist.GetBinError(nbins+1))
+        for nx in range(hist.GetNbinsX()):
+            for ny in range(hist.GetNbinsY()):
+                b = hist.GetBin(nx+1,ny+1)
+                result.SetBinContent(b,hist.GetBinContent(b))
+                result.SetBinError(b,hist.GetBinError(b))
+        return result
+
     def addMH(self,mhMin,mhMax):
         self.workspace.factory('MH[{0}, {1}]'.format(mhMin,mhMax))
 
@@ -206,6 +221,7 @@ class Limits(object):
 
     def getObserved(self,era,analysis,channel,blind=True,addSignal=False):
         '''Get the observed value. If blinded returns the sum of the expected background.'''
+        result = 0.
         if blind:
             bgs = self.backgrounds
             if addSignal: bgs += self.signals
@@ -215,7 +231,7 @@ class Limits(object):
                 for e in exp:
                     hists.Add(e)
                 if hists.IsEmpty():
-                    return 0.
+                    result = 0.
                 else:
                     hist = hists[0].Clone('h_exp')
                     hist.Reset()
@@ -225,12 +241,16 @@ class Limits(object):
                         err = val**0.5
                         hist.SetBinContent(b,val)
                         hist.SetBinError(b,err)
-                    return hist
+                    result = hist
             else:
-                return sum(exp)
+                result = sum(exp)
         else:
             key = (era,analysis,channel)
-            return self.observed[key] if key in self.observed else 0.
+            result = self.observed[key] if key in self.observed else 0.
+        if isinstance(result,ROOT.TH2):
+            result = self.__unwrap(result)
+        return result
+
 
     def setExpected(self,process,era,analysis,channel,value):
         '''Set the expected value for a given process,era,analysis,channel.'''
@@ -246,6 +266,8 @@ class Limits(object):
         '''Get the expected value.'''
         key = (process,era,analysis,channel)
         val = self.expected[key] if key in self.expected else 0.
+        if isinstance(val,ROOT.TH2):
+            val = self.__unwrap(val)
         return val if val else 1.0e-10
 
     def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True,addSignal=False,saveWorkspace=False):
