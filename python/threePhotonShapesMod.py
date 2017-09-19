@@ -120,8 +120,38 @@ else:
 
 limits.setObserved(era,analysis,reco,histMap['data'])
 
-# add systematics
+#######################
+### add systematics ###
+#######################
 systproc = tuple([proc for proc in signals + backgrounds if 'datadriven' not in proc])
+
+############
+### stat ###
+############
+
+def getStat(hist,direction):
+    newhist = hist.Clone('{0}{1}'.format(hist.GetName(),direction))
+    nb = hist.GetNbinsX()*hist.GetNbinsY()
+    for b in range(nb+1):
+        val = hist.GetBinContent(b+1)
+        err = hist.GetBinError(b+1)
+        newval = val+err if direction=='Up' else val-err
+        if newval<0: newval = 0
+        newhist.SetBinContent(b+1,newval)
+        newhist.SetBinError(b+1,0)
+    return newhist
+
+logging.info('Adding stat systematic')
+statMapUp = {}
+statMapDown = {}
+for proc in systproc:
+    statMapUp[proc] = getStat(histMap[proc],'Up')
+    statMapDown[proc] = getStat(histMap[proc],'Down')
+
+statsyst = {}
+for proc in systproc:
+    statsyst[((proc,),(era,),(analysis,),(reco,))] = (statMapUp[proc],statMapDown[proc])
+limits.addSystematic('stat_{process}_{channel}','shape',systematics=statsyst)
 
 ############
 ### Lumi ###
@@ -137,6 +167,7 @@ limits.addSystematic('lumi','lnN',systematics=lumisyst)
 ##############
 ### Pileup ###
 ##############
+logging.info('Adding pileup systematic')
 puMapUp = {}
 puMapDown = {}
 for proc in backgrounds+signals:
