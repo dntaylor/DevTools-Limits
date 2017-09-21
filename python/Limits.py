@@ -1,8 +1,11 @@
 import os
 import sys
 import logging
+import numbers
 
 import ROOT
+
+from DevTools.Limits.Models import Model
 
 class Limits(object):
     '''
@@ -12,17 +15,48 @@ class Limits(object):
     a datacard that can be read by the Higgs Combine tool.
     '''
 
-    def __init__(self):
+    def __init__(self,name='w'):
         self.eras = []        # 7, 8, 13 TeV
         self.analyses = []    # analysis name
         self.channels = []    # analysis channel
         self.observed = {}    # there is one observable per era/analysis/channel combination
         self.processes = {}   # background and signal processes
+        self.groups = {}      # groups of systematics
         self.signals = []
         self.backgrounds = []
         self.expected = {}    # expected yield, one per process/era/analysis/chanel combination
-        self.masses = []      # masses
         self.systematics = {} # systematic uncertainties
+        self.name = name
+        self.workspace = ROOT.RooWorkspace(self.name)
+
+    def __wsimport(self, *args) :
+        # getattr since import is special in python
+        # NB RooWorkspace clones object
+        if len(args) < 2 :
+            # Useless RooCmdArg: https://sft.its.cern.ch/jira/browse/ROOT-6785
+            args += (ROOT.RooCmdArg(),)
+        return getattr(self.workspace, 'import')(*args)
+
+    def __unwrap(self,hist):
+        '''Convert 2D histogram to 1D'''
+        nbins = hist.GetNbinsX()*hist.GetNbinsY()
+        result = ROOT.TH1F(hist.GetName(),hist.GetTitle(),nbins,0,nbins)
+        result.SetBinContent(0,hist.GetBinContent(0))
+        result.SetBinError(0,hist.GetBinError(0))
+        result.SetBinContent(nbins+1,hist.GetBinContent(nbins+1))
+        result.SetBinError(nbins+1,hist.GetBinError(nbins+1))
+        for nx in range(hist.GetNbinsX()):
+            for ny in range(hist.GetNbinsY()):
+                b = hist.GetBin(nx+1,ny+1)
+                result.SetBinContent(b,hist.GetBinContent(b))
+                result.SetBinError(b,hist.GetBinError(b))
+        return result
+
+    def addMH(self,mhMin,mhMax):
+        self.workspace.factory('MH[{0}, {1}]'.format(mhMin,mhMax))
+
+    def addX(self, xMin, xMax):
+        self.workspace.factory('x[{0}, {1}]'.format(xMin,xMax))
 
     def __check(self,test,stored,name='Object'):
         goodToAdd = True
@@ -94,12 +128,16 @@ class Limits(object):
         The supported modes are:
             'lnN'  : log normal uncertainty shape
             'gmN X': gamma function uncertainty shape
+            'shape': for shape based uncertainties
         The values are set with the 'systematics' arguments. They are dictionaries with the form:
             systematics = {
                (processes,eras,analyses,channels) : value,
             }
         where the key is a tuple of process, era, analysis, and channel the systematic covers, each
         of which is another tuple of the components this sytematic covers.
+        'value' is either a number for a rate systematic or a TH1 histogram for a shape uncertainty.
+        For asymmetric uncertainties, a tuple should be passed with the first the shift up
+        and the second the shift down.
         '''
         if systname in self.systematics:
             logging.warning('Systematic {0} already added.'.format(systname))
@@ -117,9 +155,14 @@ class Limits(object):
                     'values': systematics,
                 }
 
+    def addGroup(self,groupname,*systnames):
+        '''Add a group name for a list of systematics'''
+        self.groups[groupname] = systnames
+
     def getSystematic(self,systname,process,era,analysis,channel):
         '''Return the systematic value for a given systematic/process/era/analysis/channel combination.'''
         # make sure it exists:
+        result = 1.
         for syst in self.systematics:
             fullSystName = syst.format(process=process,era=era,analysis=analysis,channel=channel)
             if fullSystName != systname: continue
@@ -131,8 +174,13 @@ class Limits(object):
                 if analysis not in s_analyses and 'all' not in s_analyses: continue
                 if channel not in s_channels and 'all' not in s_channels: continue
                 # return the value
-                return self.systematics[syst]['values'][syst_vals]
-        return 1.
+                result = self.systematics[syst]['values'][syst_vals]
+        if isinstance(result,ROOT.TH2):
+            result = self.__unwrap(result)
+        if isinstance(result,tuple) or isinstance(result,list):
+            if len(result)==2 and isinstance(result[0],ROOT.TH2):
+                result = (self.__unwrap(result[0]),self.__unwrap(result[1]),)
+        return result
 
     def __getSystematicRows(self,syst,processes,era,analysis,channel):
         '''
@@ -180,13 +228,38 @@ class Limits(object):
         if goodToAdd:
             self.observed[(era,analysis,channel)] = value
 
-    def getObserved(self,era,analysis,channel,blind=True):
+    def getObserved(self,era,analysis,channel,blind=True,addSignal=False):
         '''Get the observed value. If blinded returns the sum of the expected background.'''
+        result = 0.
         if blind:
-            return sum([self.getExpected(process,era,analysis,channel) for process in self.backgrounds])
+            bgs = self.backgrounds
+            if addSignal: bgs += self.signals
+            exp = [self.getExpected(process,era,analysis,channel) for process in bgs]
+            if len(exp) and isinstance(exp[0],ROOT.TH1):
+                hists = ROOT.TList()
+                for e in exp:
+                    hists.Add(e)
+                if hists.IsEmpty():
+                    result = 0.
+                else:
+                    hist = hists[0].Clone('h_exp')
+                    hist.Reset()
+                    hist.Merge(hists)
+                    for b in range(hist.GetNbinsX()+1):
+                        val = int(hist.GetBinContent(b))
+                        err = val**0.5
+                        hist.SetBinContent(b,val)
+                        hist.SetBinError(b,err)
+                    result = hist
+            else:
+                result = sum(exp)
         else:
             key = (era,analysis,channel)
-            return self.observed[key] if key in self.observed else 0.
+            result = self.observed[key] if key in self.observed else 0.
+        if isinstance(result,ROOT.TH2):
+            result = self.__unwrap(result)
+        return result
+
 
     def setExpected(self,process,era,analysis,channel,value):
         '''Set the expected value for a given process,era,analysis,channel.'''
@@ -202,9 +275,11 @@ class Limits(object):
         '''Get the expected value.'''
         key = (process,era,analysis,channel)
         val = self.expected[key] if key in self.expected else 0.
+        if isinstance(val,ROOT.TH2):
+            val = self.__unwrap(val)
         return val if val else 1.0e-10
 
-    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True):
+    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True,addSignal=False,saveWorkspace=False):
         '''
         Print a datacard to file.
         Select the eras, analyses, channels you want to include.
@@ -222,7 +297,7 @@ class Limits(object):
         if processes==['all']: processes = self.processes.keys()
         signals = [x for x in self.signals if x in processes]
         backgrounds = [x for x in self.backgrounds if x in processes]
-
+        shapes = []
 
         # setup bins
         bins = ['bin']
@@ -231,8 +306,25 @@ class Limits(object):
         for era in eras:
             for analysis in analyses:
                 for channel in channels:
-                    bins += [binName.format(era=era,analysis=analysis,channel=channel)]
-                    observations += ['{0}'.format(self.getObserved(era,analysis,channel,blind=blind))]
+                    blabel = binName.format(era=era,analysis=analysis,channel=channel)
+                    bins += [blabel]
+                    obs = self.getObserved(era,analysis,channel,blind=blind,addSignal=addSignal)
+                    label = 'data_obs_{0}'.format(blabel)
+                    if isinstance(obs,ROOT.TH1):
+                        logging.info('{0}: {1}'.format(label,obs.Integral()))
+                        obs.SetName(label)
+                        obs.SetTitle(label)
+                        shapes += [obs]
+                        if saveWorkspace:
+                            datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), obs)
+                            self.__wsimport(datahist)
+                            obs = -1
+                        else:
+                            obs = obs.Integral()
+                    else:
+                        logging.info('{0}: {1}'.format(label,obs))
+                    # TODO: unbinned data handling
+                    observations += ['{0}'.format(obs)]
         imax = len(bins)-1
 
         # setup processes
@@ -250,10 +342,34 @@ class Limits(object):
                 for channel in channels:
                     for process in processesOrdered:
                         colpos += 1
-                        binsForRates[colpos] = '{era}_{analysis}_{channel}'.format(era=era,analysis=analysis,channel=channel)
+                        binsForRates[colpos] = binName.format(era=era,analysis=analysis,channel=channel)
                         processNames[colpos] = process
                         processNumbers[colpos] = '{0:<10}'.format(processesOrdered.index(process)-len(signals)+1)
-                        rates[colpos] = '{0:<10.4g}'.format(self.getExpected(process,era,analysis,channel))
+                        exp = self.getExpected(process,era,analysis,channel)
+                        label = '{0}_{1}'.format(processNames[colpos],binsForRates[colpos])
+                        if isinstance(exp,ROOT.TH1):
+                            logging.info('{0}: {1}'.format(label,exp.Integral()))
+                            exp.SetName(label)
+                            exp.SetTitle(label)
+                            shapes += [exp]
+                            if saveWorkspace:
+                                datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), exp)
+                                self.__wsimport(datahist)
+                                exp = -1
+                            else:
+                                exp = exp.Integral()
+                        elif isinstance(exp,Model):
+                            exp.build(self.workspace,label)
+                            #x = self.workspace.var('x')
+                            #argset = ROOT.RooArgSet(x)
+                            #pdf = self.workspace.pdf(label)
+                            #exp = pdf.getVal(argset)
+                            #exp = pdf.createIntegral(argset).getVal()
+                            exp = exp.getIntegral()
+                        else:
+                            logging.info('{0}: {1}'.format(label,exp))
+                        # TODO: unbinned handling
+                        rates[colpos] = '{0:<10.4g}'.format(exp)
 
         # setup nuissances
         systs = {}
@@ -276,7 +392,43 @@ class Limits(object):
                     for channel in channels:
                         for process in processesOrdered:
                             key = (era,analysis,channel,process)
-                            thisRow += ['{0:<10.4g}'.format(combinedSysts[syst]['systs'][key]) if key in combinedSysts[syst]['systs'] and combinedSysts[syst]['systs'][key]!=1 else '-']
+                            s = '-'
+                            if key in combinedSysts[syst]['systs']:
+                                s = combinedSysts[syst]['systs'][key]
+                                if s==1:
+                                    s = '-'
+                                elif isinstance(s,ROOT.TH1):
+                                    label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                    s.SetName(label)
+                                    s.SetTitle(label)
+                                    shapes += [s]
+                                    if saveWorkspace:
+                                        datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), s)
+                                        self.__wsimport(datahist)
+                                    s = '1'
+                                elif (isinstance(s,tuple) or isinstance(s,list)) and len(s)==2:
+                                    if isinstance(s[0],ROOT.TH1):
+                                        label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        s[0].SetName(label_up)
+                                        s[0].SetTitle(label_up)
+                                        s[1].SetName(label_down)
+                                        s[1].SetTitle(label_down)
+                                        shapes += s
+                                        if saveWorkspace:
+                                            datahist_up = ROOT.RooDataHist(label_up, label_up, ROOT.RooArgList(self.workspace.var("x")), s[0])
+                                            datahist_down = ROOT.RooDataHist(label_down, label_down, ROOT.RooArgList(self.workspace.var("x")), s[1])
+                                            self.__wsimport(datahist_up)
+                                            self.__wsimport(datahist_down)
+                                        s = '1'
+                                    elif isinstance(s[0],numbers.Number):
+                                        s = '{0:>4.4g}/{1:<4.4g}'.format(*s)
+                                    else:
+                                        logging.error('Do not know how to handle {0}'.format(s))
+                                        raise
+                                elif isinstance(s,numbers.Number):
+                                    s = '{0:<10.4g}'.format(s)
+                            thisRow += [s]
             systRows += [thisRow]
 
         kmax = len(systRows)
@@ -288,16 +440,29 @@ class Limits(object):
             firstWidth = 40
             restWidth = 30
             def getline(row):
-                return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
+                try:
+                    return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
+                except:
+                    print row
+                    e = sys.exc_info()[0]
+                    print e
+                    raise
 
             # header
             f.write('imax {0} number of bins\n'.format(imax))
-            f.write('jmax {0} number of processes\n'.format(jmax))
+            #f.write('jmax {0} number of processes\n'.format(jmax))
+            f.write('jmax * number of processes\n')
             f.write('kmax * number of nuissances\n')
             f.write('-'*lineWidth+'\n')
 
             # shape information
-            f.write('shapes * * FAKE\n')
+            if shapes:
+                for b in bins[1:]:
+                    procString = '$PROCESS_{0}'.format(b)
+                    if saveWorkspace: procString = '{0}:{1}'.format(self.name,procString)
+                    f.write('shapes * {0} {1} {2} {2}_$SYSTEMATIC\n'.format(b,filename.replace('.txt','.root'),procString))
+            else:
+                f.write('shapes * * FAKE\n')
             f.write('-'*lineWidth+'\n')
             
             # observation
@@ -318,5 +483,20 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # nuissance categories
+            for group in self.groups:
+                f.write('{0} group = {1}'.format(group,' '.join(self.groups[group])))
+
+        # shape file
+        if shapes:
+            outname = filename.replace('.txt','.root')
+            if saveWorkspace:
+                self.workspace.Print()
+                self.workspace.SaveAs(outname)
+            else:
+                outfile = ROOT.TFile.Open(outname,'RECREATE')
+                for shape in shapes:
+                    shape.Write('',ROOT.TObject.kOverwrite)
+                outfile.Write()
+                outfile.Close()
 
 
