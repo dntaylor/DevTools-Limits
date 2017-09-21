@@ -14,9 +14,9 @@ class YieldsTex:
     table='''
 \\subsection{{{tex} yields}}
 {{\\tiny
-\\begin{{longtable}}{{ll|r|rr|r}}
+\\begin{{longtable}}{{ll|r|rrr|r}}
 \\hline
-$\\mHpmpm$ [\\GeV] & Channel & $N_{{exp}}$ & $N_{{AP}}$ & $N_{{PP}}$ & $N_{{obs}}$ \\\\
+$\\mHpmpm$ [\\GeV] & Channel & $N_{{exp}}$ & $N_{{AP}}$ & $N_{{PP}}$ & $\\rm{{PP_{{R}}}}$ & $N_{{obs}}$ \\\\
 \\hline
 \\endhead
 {rows}
@@ -26,7 +26,7 @@ $\\mHpmpm$ [\\GeV] & Channel & $N_{{exp}}$ & $N_{{AP}}$ & $N_{{PP}}$ & $N_{{obs}
 
 
     row = '''
-{mass:4} & ${reco:18}$ & {expected:25} & {ap:25} & {pp:25} & {observed:4} \\\\'''
+{mass:4} & ${reco:18}$ & {expected:25} & {ap:25} & {pp:25} & {ppR:25} & {observed:4} \\\\'''
 
 
 benchmarks = {
@@ -119,83 +119,95 @@ def printYields(args):
              if args.verbose==2:
                  for chan in sorted(hpp3l):
                      if '_SB' in chan: continue
-                     rowargs = {'mass':mass if first else '', 'reco':''.join([flavorMap[lep] for lep in chan]), 'expected':0., 'ap':0., 'pp':0., 'observed': '---' if not args.unblind else 0}
+                     rowargs = {'mass':mass if first else '', 'reco':''.join([flavorMap[lep] for lep in chan]), 'expected':0., 'ap':0., 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                      include = False
                      rowargs['expected'] += hpp3l[chan]['expected']
                      rowargs['ap'] += hpp3l[chan]['ap']
                      rowargs['pp'] += hpp3l[chan]['pp']
+                     rowargs['ppR'] += hpp3l[chan]['ppR']
                      if args.unblind: rowargs['observed'] += int(hpp3l[chan]['observed'])
                      first = False
                      include = True
                      rowargs['expected'] = latex_float(rowargs['expected'])
                      rowargs['ap'] = latex_float(rowargs['ap'])
                      rowargs['pp'] = latex_float(rowargs['pp']) if rowargs['pp'] else '---'
+                     rowargs['ppR'] = latex_float(rowargs['ppR']) if rowargs['ppR'] else '---'
                      if include: rowstring += YieldsTex.row.format(**rowargs)
                  for chan in sorted(hpp4l):
                      if '_SB' in chan: continue
-                     rowargs = {'mass':mass if first else '', 'reco':''.join([flavorMap[lep] for lep in chan]), 'expected':0., 'ap':'---', 'pp':0., 'observed': '---' if not args.unblind else 0}
+                     rowargs = {'mass':mass if first else '', 'reco':''.join([flavorMap[lep] for lep in chan]), 'expected':0., 'ap':'---', 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                      include = False
                      rowargs['expected'] += hpp4l[chan]['expected']
                      rowargs['pp'] += hpp4l[chan]['pp']
+                     rowargs['ppR'] += hpp4l[chan]['ppR']
                      if args.unblind: rowargs['observed'] += int(hpp4l[chan]['observed'])
                      first = False
                      include = True
                      rowargs['expected'] = latex_float(rowargs['expected'])
                      rowargs['pp'] = latex_float(rowargs['pp'])
+                     rowargs['ppR'] = latex_float(rowargs['ppR'])
                      if include: rowstring += YieldsTex.row.format(**rowargs)
              elif args.verbose==1:
                  for cat in cats:
-                     rowargs = {'mass':mass if first else '', 'reco':catTex['Hpp3l'][cat], 'expected':0., 'ap':0., 'pp':0., 'observed': '---' if not args.unblind else 0}
+                     rowargs = {'mass':mass if first else '', 'reco':catTex['Hpp3l'][cat], 'expected':0., 'ap':0., 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                      include = False
                      for chan in sorted(hpp3l):
                          if chan not in catChans['Hpp3l'][cat]: continue
                          rowargs['expected'] += hpp3l[chan]['expected']
                          rowargs['ap'] += hpp3l[chan]['ap']
                          rowargs['pp'] += hpp3l[chan]['pp']
+                         rowargs['ppR'] += hpp3l[chan]['ppR']
                          if args.unblind: rowargs['observed'] += int(hpp3l[chan]['observed'])
                          first = False
                          include = True
                      rowargs['expected'] = latex_float(rowargs['expected'])
                      rowargs['ap'] = latex_float(rowargs['ap'])
                      rowargs['pp'] = latex_float(rowargs['pp']) if rowargs['pp'] else '---'
+                     rowargs['ppR'] = latex_float(rowargs['ppR']) if rowargs['ppR'] else '---'
                      if include: rowstring += YieldsTex.row.format(**rowargs)
                  for cat in cats:
-                     rowargs = {'mass':mass if first else '', 'reco':catTex['Hpp4l'][cat], 'expected':0., 'ap':'---', 'pp':0., 'observed': '---' if not args.unblind else 0}
+                     rowargs = {'mass':mass if first else '', 'reco':catTex['Hpp4l'][cat], 'expected':0., 'ap':'---', 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                      include = False
                      for chan in sorted(hpp4l):
                          if chan not in catChans['Hpp4l'][cat]: continue
                          rowargs['expected'] += hpp4l[chan]['expected']
                          rowargs['pp'] += hpp4l[chan]['pp']
+                         rowargs['ppR'] += hpp4l[chan]['ppR']
                          if args.unblind: rowargs['observed'] += int(hpp4l[chan]['observed'])
                          first = False
                          include = True
                      rowargs['expected'] = latex_float(rowargs['expected'])
                      rowargs['pp'] = latex_float(rowargs['pp'])
+                     rowargs['ppR'] = latex_float(rowargs['ppR'])
                      if include: rowstring += YieldsTex.row.format(**rowargs)
              else:
-                 rowargs = {'mass':mass if first else '', 'reco':'3\\ell', 'expected':0., 'ap':0., 'pp':0., 'observed': '---' if not args.unblind else 0}
+                 rowargs = {'mass':mass if first else '', 'reco':'3\\ell', 'expected':0., 'ap':0., 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                  include = False
                  for chan in sorted(hpp3l):
                      rowargs['expected'] += hpp3l[chan]['expected']
                      rowargs['ap'] += hpp3l[chan]['ap']
                      rowargs['pp'] += hpp3l[chan]['pp']
+                     rowargs['ppR'] += hpp3l[chan]['ppR']
                      if args.unblind: rowargs['observed'] += int(hpp3l[chan]['observed'])
                      first = False
                      include = True
                  rowargs['expected'] = latex_float(rowargs['expected'])
                  rowargs['ap'] = latex_float(rowargs['ap'])
                  rowargs['pp'] = latex_float(rowargs['pp']) if rowargs['pp'] else '---'
+                 rowargs['ppR'] = latex_float(rowargs['ppR']) if rowargs['ppR'] else '---'
                  if include: rowstring += YieldsTex.row.format(**rowargs)
-                 rowargs = {'mass':mass if first else '', 'reco':'4\\ell', 'expected':0., 'ap':'---', 'pp':0., 'observed': '---' if not args.unblind else 0}
+                 rowargs = {'mass':mass if first else '', 'reco':'4\\ell', 'expected':0., 'ap':'---', 'pp':0., 'ppR':0., 'observed': '---' if not args.unblind else 0}
                  include = False
                  for chan in sorted(hpp4l):
                      rowargs['expected'] += hpp4l[chan]['expected']
                      rowargs['pp'] += hpp4l[chan]['pp']
+                     rowargs['ppR'] += hpp4l[chan]['ppR']
                      if args.unblind: rowargs['observed'] += int(hpp4l[chan]['observed'])
                      first = False
                      include = True
                  rowargs['expected'] = latex_float(rowargs['expected'])
                  rowargs['pp'] = latex_float(rowargs['pp'])
+                 rowargs['ppR'] = latex_float(rowargs['ppR'])
                  if include: rowstring += YieldsTex.row.format(**rowargs)
              
              rowstring += ' \\hline'

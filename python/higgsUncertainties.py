@@ -18,10 +18,10 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     ############
     ### Lumi ###
     ############
-    # lumi 2.7% for 2015 and 2.6% for 2016
+    # lumi 2.7% for 2015 and 2.5% for 2016
     # https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM#CurRec
     lumisyst = {
-        (systproc,('13TeV80X',),('all',),('all',)): 1.026,
+        (systproc,('13TeV80X',),('all',),('all',)): 1.025,
         #(systproc,('13TeV76X',),('all',),('all',)): 1.027,
     }
     limits.addSystematic('lumi','lnN',systematics=lumisyst)

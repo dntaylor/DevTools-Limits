@@ -9,7 +9,7 @@ class LimitsTex:
     tablePAS = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Observed (expected) 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\topcaption{{Observed (expected) 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$), as well as the AP and PP combined limit.}}
     \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
         Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
@@ -24,7 +24,7 @@ class LimitsTex:
     table = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Expected 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\topcaption{{Expected 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$), as well as the AP and PP combined limit.}}
     \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
         Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
@@ -53,7 +53,7 @@ class LimitsTex:
     tableObs = '''
 \\begin{{table}}[!htp]
     \\centering
-    \\topcaption{{Observed 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$) and the AP and PP combined limit.}}
+    \\topcaption{{Observed 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$), as well as the AP and PP combined limit.}}
     \\begin{{tabular}}{{| c | c | c | c | c |}}
         \\hline
         Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
