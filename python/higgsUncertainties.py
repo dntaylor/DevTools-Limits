@@ -103,7 +103,7 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl):
     ##################
     # alpha 10%
     ddsyst = {
-        (ddproc, ('all',), ('all',), ('all',)): 1.1,
+        (ddproc, ('all',), ('all',), ('all',)): 1.2,
     }
     if ddproc: limits.addSystematic('alpha_unc','lnN',systematics=ddsyst)
 
