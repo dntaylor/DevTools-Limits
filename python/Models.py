@@ -1,3 +1,5 @@
+import logging
+
 from array import array
 
 import ROOT
@@ -185,6 +187,8 @@ class Exponential(Model):
 class Sum(Model):
 
     def __init__(self,name,**kwargs):
+        self.doRecursive = kwargs.pop('recursive',False)
+        self.doExtended = kwargs.pop('extended',False)
         super(self.__class__,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
@@ -193,10 +197,16 @@ class Sum(Model):
             ws.factory('{0}_norm[{1},{2}]'.format(n,*r))
             pdfs += [pdf]
         # build model
-        prev = ''
-        sumargs = []
-        for pdf in pdfs:
-            curr = '{0}_norm*{1}*{0}'.format(pdf,prev) if prev else '{0}_norm*{0}'.format(pdf)
-            sumargs += [curr]
-            prev = '{0}*(1-{1}_norm)'.format(prev,pdf) if prev else '(1-{0}_norm)'.format(pdf)
+        if doRecursive:
+            prev = ''
+            sumargs = []
+            for pdf in pdfs:
+                curr = '{0}_norm*{1}*{0}'.format(pdf,prev) if prev else '{0}_norm*{0}'.format(pdf)
+                sumargs += [curr]
+                prev = '{0}*(1-{1}_norm)'.format(prev,pdf) if prev else '(1-{0}_norm)'.format(pdf)
+        elif doExtended:
+            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs]
+        else: # Don't do this if you have more than 2 pdfs ...
+            if len(pdfs)>2: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
+            sumargs = ['{0}'.format(pdf) if len(pdfs)==n+1 else '{0}_norm*{0}'.format(pdf) for n,pdf in enumerate(pdfs)]
         ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs))
