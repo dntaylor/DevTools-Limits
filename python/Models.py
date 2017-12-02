@@ -78,9 +78,9 @@ class GaussianSpline(Model):
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
-        masses = self.kwargs.get('masses', [150,250,350,450])
-        means  = self.kwargs.get('means',  [150,250,350,450])
-        sigmas = self.kwargs.get('sigmas', [15,25,35,45])
+        masses = self.kwargs.get('masses', [])
+        means  = self.kwargs.get('means',  [])
+        sigmas = self.kwargs.get('sigmas', [])
         # splines
         meanSpline  = ROOT.RooSpline1D(meanName,  meanName,  ws.var('MH'), len(masses), array('d',masses), array('d',means))
         sigmaSpline = ROOT.RooSpline1D(sigmaName, sigmaName, ws.var('MH'), len(masses), array('d',masses), array('d',sigmas))
@@ -114,9 +114,9 @@ class BreitWignerSpline(Model):
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
-        masses = self.kwargs.get('masses', [150,250,350,450])
-        means  = self.kwargs.get('means',  [150,250,350,450])
-        widths = self.kwargs.get('widths', [15,25,35,45])
+        masses = self.kwargs.get('masses', [])
+        means  = self.kwargs.get('means',  [])
+        widths = self.kwargs.get('widths', [])
         # splines
         meanSpline  = ROOT.RooSpline1D(meanName,  meanName,  ws.var('MH'), len(masses), array('d',masses), array('d',means))
         widthSpline = ROOT.RooSpline1D(widthName, widthName, ws.var('MH'), len(masses), array('d',masses), array('d',widths))
@@ -154,10 +154,10 @@ class VoigtianSpline(Model):
         meanName = 'mean_{0}'.format(label)
         widthName = 'width_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
-        masses = self.kwargs.get('masses', [150,250,350,450])
-        means  = self.kwargs.get('means',  [150,250,350,450])
-        widths = self.kwargs.get('widths', [15,25,35,45])
-        sigmas = self.kwargs.get('sigmas', [15,25,35,45])
+        masses = self.kwargs.get('masses', [])
+        means  = self.kwargs.get('means',  [])
+        widths = self.kwargs.get('widths', [])
+        sigmas = self.kwargs.get('sigmas', [])
         # splines
         meanSpline  = ROOT.RooSpline1D(meanName,  meanName,  ws.var('MH'), len(masses), array('d',masses), array('d',means))
         widthSpline = ROOT.RooSpline1D(widthName, widthName, ws.var('MH'), len(masses), array('d',masses), array('d',widths))
@@ -176,8 +176,21 @@ class Exponential(Model):
 
     def build(self,ws,label):
         lambdaName = 'lambda_{0}'.format(label)
-        lamb = self.kwargs.get('lambda',  [-1,-5,0])
+        lamb = self.kwargs.get('lamb',  [-1,-5,0])
         # variables
         ws.factory('{0}[{1}, {2}, {3}]'.format(lambdaName,*lamb))
         # build model
         ws.factory("Exponential::{0}({1}, {2})".format(label,self.x,lambdaName))
+
+class Sum(Model):
+
+    def __init__(self,name,**kwargs):
+        super(self.__class__,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        pdfs = []
+        for n, (pdf, r) in enumerate(self.kwargs.iteritems()):
+            ws.factory('{0}n{1}[{2},{3}]'.format(label,n,*r))
+            pdfs += [pdf]
+        # build model
+        ws.factory("SUM::{0}({1})".format(label, ', '.join([pdf if len(pdf)==n else '{0}n{1}*{2}'.format(label,n,pdf) for n,pdf in enumerate(pdfs)])))

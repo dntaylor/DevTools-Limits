@@ -130,6 +130,7 @@ if doParametric:
     results = model.fit(ws,hist,'sig',save=True)
     model = Models.VoigtianSpline('sig',
         **{
+            'masses': [150,250,350,450],
             'means' : [150,250,350,450],
             'widths': [15,results['width_sig'],35,45],
             'sigmas': [15,results['sigma_sig'],35,45],

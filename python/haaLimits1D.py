@@ -1,58 +1,82 @@
 import os
 import sys
 import logging
+import itertools
 
 import ROOT
+ROOT.gROOT.SetBatch()
 
 from DevTools.Limits.Limits import Limits
 from DevTools.Plotter.NtupleWrapper import NtupleWrapper
 from DevTools.Utilities.utilities import *
-from DevTools.Plotter.threePhotonUtils import *
+from DevTools.Plotter.haaUtils import *
 import DevTools.Limits.Models as Models
 
 logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%(msecs)03d %(levelname)s %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-# control
+###############
+### Control ###
+###############
 blind = True
-selection = 'pass_Diphoton30_18_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass90 && gg12_mass>100 && g1_passPreselection>0 && g2_passPreselection>0 && g1_mvaNonTrigValues>0. && g2_mvaNonTrigValues>0. && g3_mvaNonTrigValues>0.'
-scalefactor = '*'.join(['genWeight','pileupWeight',])
-binned = True
-addSignal = True
+selection = '1'
+scalefactor = '*'.join(['genWeight','pileupWeight','triggerEfficiency'])
+addSignal = False
 wsname = 'w'
-doParametric = False
-binning = [10,0,500]
-#binning = [10,0,250000]
+mmbinning = [290,1,30]
+mtbinning = [600,0,60]
+hbinning  = [100,0,1000]
 
-# setup
+#############
+### Setup ###
+#############
 sampleMap = getSampleMap()
 
-backgrounds = ['TT','TTG','VVG','Z','G','GG','QCD']
+#backgrounds = ['JPsi','Upsilon', 'W', 'Z', 'TT', 'WW', 'WZ', 'ZZ']
+#backgrounds = ['W', 'Z', 'TT', 'WW', 'WZ', 'ZZ']
+#backgrounds = ['W', 'Z', 'TT']
+backgrounds = ['datadriven']
 data = ['data']
-#signals = ['HToAG_250_1','HToAG_250_30','HToAG_250_150']
-signals = ['HToAG_250_150']
+signame = 'HToAAH{h}A{a}'
+
+hmasses = [125,300,750]
+amasses = [5,7,9,11,13,15,17,19,21]
+
+signals = [signame.format(h=h,a=a) for h in hmasses for a in amasses]
+#signals = [signame.format(h=125,a=15)]
 
 wrappers = {}
 for proc in backgrounds+signals+data:
+    if proc=='datadriven': continue
     for sample in sampleMap[proc]:
-        wrappers[sample] = NtupleWrapper('ThreePhoton',sample,new=True,version='80X')
+        wrappers[sample] = NtupleWrapper('MuMuTauTau',sample,new=True,version='80X')
 
-def getBinned(proc,**kwargs):
-    scalefactor = kwargs.pop('scalefactor','*'.join(['genWeight','pileupWeight',]))
+#################
+### Utilities ###
+#################
+def getBinned(procname,**kwargs):
+    scalefactor = kwargs.pop('scalefactor','1' if procname=='data' else '*'.join(['genWeight','pileupWeight','triggerEfficiency']))
+
+    proc = procname
+
+    # use region D for datadriven background and scale by 0.5
+    if procname=='datadriven':
+        selection = '(am1_isolation>0.15 || am2_isolation>0.15) && ath_byVLooseIsolationMVArun2v1DBoldDMwLT<0.5'
+        proc = 'data'
+        scalefactor = '0.5'
+    else:
+        selection = 'am1_isolation<0.15 && am2_isolation<0.15 && ath_byVLooseIsolationMVArun2v1DBoldDMwLT>0.5'
+
     hists = ROOT.TList()
     for sample in sampleMap[proc]:
-        hist = wrappers[sample].getTempHist2D(sample,selection,'1' if proc=='data' else scalefactor,'gg13_mass','gg23_mass',binning,binning)
-        #hist = wrappers[sample].getTempHist2D(sample,selection,'1' if proc=='data' else scalefactor,'gg13_M2','gg23_M2',binning,binning)
+        hist = wrappers[sample].getTempHist(sample,selection,scalefactor,'amm_mass',mmbinning)
         hists.Add(hist)
     if hists.IsEmpty():
         hist = 0
     else:
-        hist = hists[0].Clone('h_{0}'.format(proc))
+        hist = hists[0].Clone('h_{0}'.format(procname))
         hist.Reset()
         hist.Merge(hists)
     return hist
-
-def getUnbinned(proc):
-    return ROOT.RooDataSet()
 
 def sumHists(name,*hists):
     histlist = ROOT.TList()
@@ -63,7 +87,10 @@ def sumHists(name,*hists):
     hist.Merge(histlist)
     return hist
 
-# load histograms
+##############################
+### Create/read histograms ###
+##############################
+
 histMap = {}
 for proc in backgrounds+signals:
     logging.info('Getting {0}'.format(proc))
@@ -87,44 +114,36 @@ else:
     hist = getBinned('data')
     histMap['data'] = hist
 
-# create limit object
+#####################
+### Create Limits ###
+#####################
 limits = Limits(wsname)
 
 limits.addEra('Run2016')
-limits.addAnalysis('ThreePhoton')
-limits.addChannel('ggg')
-
-if doParametric:
-    limits.addMH(*binning[1:])
-    limits.addX(*binning[1:])
-
-if doParametric:
-    limits.addProcess('sig',signal=True)
-    limits.addProcess('bg')
-else:
-    for signal in signals:
-        limits.addProcess(signal,signal=True)
-    for background in backgrounds:
-        limits.addProcess(background)
+limits.addAnalysis('HAA')
+limits.addChannel('mmmt')
 
 era = 'Run2016'
-analysis = 'ThreePhoton'
-reco = 'ggg'
-if doParametric:
-    # no parametric for 2d fit yet
-    pass
+analysis = 'HAA'
+reco = 'mmmt'
 
-else:
-    for proc in backgrounds:
-        limits.setExpected(proc,era,analysis,reco,histMap[proc])
-    for proc in signals:
-        limits.setExpected(proc,era,analysis,reco,histMap[proc])
+for signal in signals:
+    limits.addProcess(signal,signal=True)
+for background in backgrounds:
+    limits.addProcess(background)
+
+for proc in backgrounds:
+    limits.setExpected(proc,era,analysis,reco,histMap[proc])
+for proc in signals:
+    limits.setExpected(proc,era,analysis,reco,histMap[proc])
 
 limits.setObserved(era,analysis,reco,histMap['data'])
 
-#######################
-### add systematics ###
-#######################
+#########################
+### Add uncertainties ###
+#########################
+
+
 systproc = tuple([proc for proc in signals + backgrounds if 'datadriven' not in proc])
 
 ############
@@ -149,11 +168,6 @@ statMapDown = {}
 for proc in systproc:
     statMapUp[proc] = getStat(histMap[proc],'Up')
     statMapDown[proc] = getStat(histMap[proc],'Down')
-
-statsyst = {}
-for proc in systproc:
-    statsyst[((proc,),(era,),(analysis,),(reco,))] = (statMapUp[proc],statMapDown[proc])
-limits.addSystematic('stat_{process}_{channel}','shape',systematics=statsyst)
 
 ############
 ### Lumi ###
@@ -182,10 +196,13 @@ for proc in systproc:
     pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
 limits.addSystematic('pu','shape',systematics=pusyst)
 
-# print the datacard
-directory = 'datacards_shape/{0}'.format('ThreePhoton')
+######################
+### Print datacard ###
+######################
+directory = 'datacards_shape/{0}'.format('MuMuTauTau')
 python_mkdir(directory)
-datacard = '{0}/ggg_mod.txt'.format(directory)
-processes = ['sig','bg'] if doParametric else signals+backgrounds
-limits.printCard(datacard,processes=processes,blind=False,saveWorkspace=doParametric)
-
+datacard = '{0}/mmmt_1d_{1}'.format(directory,'binned')
+processes = {}
+for signal in signals:
+    processes[signal] = [signal]+backgrounds
+limits.printCard(datacard,processes=processes,blind=False)

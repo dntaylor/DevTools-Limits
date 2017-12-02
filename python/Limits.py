@@ -279,12 +279,51 @@ class Limits(object):
             val = self.__unwrap(val)
         return val if val else 1.0e-10
 
-    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True,addSignal=False,saveWorkspace=False):
+    def printCard(self,filename,eras=['all'],analyses=['all'],channels=['all'],processes=['all'],blind=True,addSignal=False,saveWorkspace=False,suffix=''):
         '''
         Print a datacard to file.
         Select the eras, analyses, channels you want to include.
         Each will correspond to one bin in the datacard.
         '''
+
+        shapes = self._printMultipleCards(filename,eras,analyses,channels,processes,blind,addSignal,saveWorkspace,suffix)
+        
+        # shape file
+        if shapes:
+            outname = filename+'.root'
+            if saveWorkspace:
+                self.workspace.Print()
+                self.workspace.SaveAs(outname)
+            else:
+                outfile = ROOT.TFile.Open(outname,'RECREATE')
+                for shape in shapes:
+                    shape.Write('',ROOT.TObject.kOverwrite)
+                outfile.Write()
+                outfile.Close()
+
+    def _printMultipleCards(self,filename,eras,analyses,channels,processes,blind,addSignal,saveWorkspace,suffix):
+        shapes = []
+        if isinstance(eras,dict):
+            for k,v in eras.iteritems():
+                shapes += self._printMultipleCards(filename,v,analyses,channels,processes,blind,addSignal,saveWorkspace,'{0}_{1}'.format(suffix,k))
+        elif isinstance(analyses,dict):
+            for k,v in analyses.iteritems():
+                shapes += self._printMultipleCards(filename,eras,v,channels,processes,blind,addSignal,saveWorkspace,'{0}_{1}'.format(suffix,k))
+        elif isinstance(channels,dict):
+            for k,v in channels.iteritems():
+                shapes += self._printMultipleCards(filename,eras,analyses,v,processes,blind,addSignal,saveWorkspace,'{0}_{1}'.format(suffix,k))
+        elif isinstance(processes,dict):
+            for k,v in processes.iteritems():
+                shapes += self._printMultipleCards(filename,eras,analyses,channels,v,blind,addSignal,saveWorkspace,'{0}_{1}'.format(suffix,k))
+        else:
+            shapes += self._printSingleCard(filename,eras,analyses,channels,processes,blind,addSignal,saveWorkspace,suffix)
+            
+        return shapes
+
+
+
+
+    def _printSingleCard(self,filename,eras,analyses,channels,processes,blind,addSignal,saveWorkspace,suffix):
         goodToPrint = True
         goodToPrint = goodToPrint and self.__checkEras(eras)
         goodToPrint = goodToPrint and self.__checkAnalyses(analyses)
@@ -372,6 +411,7 @@ class Limits(object):
                         rates[colpos] = '{0:<10.4g}'.format(exp)
 
         # setup nuissances
+        logging.info('Systs available: {0}'.format([str(x) for x in sorted(self.systematics.keys())]))
         systs = {}
         keys = []
         for era in eras:
@@ -383,7 +423,9 @@ class Limits(object):
                     for syst in self.systematics:
                         systs[key].update(self.__getSystematicRows(syst,processes,era,analysis,channel))
 
+
         combinedSysts = self.__combineSystematics(*[systs[key] for key in systs])
+        logging.info('Systs to add: {0}'.format([str(x) for x in sorted(combinedSysts.keys())]))
         systRows = []
         for syst in sorted(combinedSysts.keys()):
             thisRow = [syst,combinedSysts[syst]['mode']]
@@ -406,6 +448,10 @@ class Limits(object):
                                         datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), s)
                                         self.__wsimport(datahist)
                                     s = '1'
+                                elif isinstance(s,Model):
+                                    label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                    s.build(self.workspace,label)
+                                    s = '1'
                                 elif (isinstance(s,tuple) or isinstance(s,list)) and len(s)==2:
                                     if isinstance(s[0],ROOT.TH1):
                                         label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
@@ -421,6 +467,12 @@ class Limits(object):
                                             self.__wsimport(datahist_up)
                                             self.__wsimport(datahist_down)
                                         s = '1'
+                                    elif isinstance(s[0],Model):
+                                        label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        s[0].build(self.workspace,label_up)
+                                        s[1].build(self.workspace,label_down)
+                                        s = '1'
                                     elif isinstance(s[0],numbers.Number):
                                         s = '{0:>4.4g}/{1:<4.4g}'.format(*s)
                                     else:
@@ -433,9 +485,9 @@ class Limits(object):
 
         kmax = len(systRows)
 
-        logging.info('Writing {0}'.format(filename))
+        logging.info('Writing {0}{1}.txt'.format(filename,suffix))
         # now write to file
-        with open(filename,'w') as f:
+        with open(filename+suffix+'.txt','w') as f:
             lineWidth = 80
             firstWidth = 40
             restWidth = 30
@@ -460,7 +512,7 @@ class Limits(object):
                 for b in bins[1:]:
                     procString = '$PROCESS_{0}'.format(b)
                     if saveWorkspace: procString = '{0}:{1}'.format(self.name,procString)
-                    f.write('shapes * {0} {1} {2} {2}_$SYSTEMATIC\n'.format(b,filename.replace('.txt','.root'),procString))
+                    f.write('shapes * {0} {1}.root {2} {2}_$SYSTEMATIC\n'.format(b,filename,procString))
             else:
                 f.write('shapes * * FAKE\n')
             f.write('-'*lineWidth+'\n')
@@ -471,14 +523,17 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # process definition
+            logging.info('Bins: {0}'.format([str(x) for x in binsForRates]))
             f.write(getline(binsForRates))
             f.write(getline(processNames))
             f.write(getline(processNumbers))
+            logging.info('Rates: {0}'.format([str(x) for x in rates]))
             f.write(getline(rates))
             f.write('-'*lineWidth+'\n')
 
             # nuissances
             for systRow in systRows:
+                logging.info('Systematic row: {0}'.format([str(x) for x in systRow]))
                 f.write(getline(systRow))
             f.write('-'*lineWidth+'\n')
 
@@ -486,17 +541,4 @@ class Limits(object):
             for group in self.groups:
                 f.write('{0} group = {1}'.format(group,' '.join(self.groups[group])))
 
-        # shape file
-        if shapes:
-            outname = filename.replace('.txt','.root')
-            if saveWorkspace:
-                self.workspace.Print()
-                self.workspace.SaveAs(outname)
-            else:
-                outfile = ROOT.TFile.Open(outname,'RECREATE')
-                for shape in shapes:
-                    shape.Write('',ROOT.TObject.kOverwrite)
-                outfile.Write()
-                outfile.Close()
-
-
+        return shapes
