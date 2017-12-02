@@ -190,7 +190,13 @@ class Sum(Model):
     def build(self,ws,label):
         pdfs = []
         for n, (pdf, r) in enumerate(self.kwargs.iteritems()):
-            ws.factory('{0}n{1}[{2},{3}]'.format(label,n,*r))
+            ws.factory('{0}_norm[{1},{2}]'.format(n,*r))
             pdfs += [pdf]
         # build model
-        ws.factory("SUM::{0}({1})".format(label, ', '.join([pdf if len(pdf)==n else '{0}n{1}*{2}'.format(label,n,pdf) for n,pdf in enumerate(pdfs)])))
+        prev = ''
+        sumargs = []
+        for pdf in pdfs:
+            curr = '{0}_norm*{1}*{0}'.format(pdf,prev) if prev else '{0}_norm*{0}'.format(pdf)
+            sumargs += [curr]
+            prev = '{0}*(1-{1}_norm)'.format(prev,pdf) if prev else '(1-{0}_norm)'.format(pdf)
+        ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs))
