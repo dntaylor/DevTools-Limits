@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 import itertools
+import numpy as np
 
 import ROOT
 ROOT.gROOT.SetBatch()
@@ -39,12 +40,16 @@ varNames = {
     'h' : 'h_mass',
 }
 varBinning = {
-    'mm' : [260,4,30],
-    'tt' : [600,0,60],
-    'h'  : [100,0,1000],
+    'mm' : [42,4,25] if do2D else [420,4,25],
+    'tt' : [60,0,60] if do2D else [600,0,60],
+    'h'  : [100,0,1000] if do2D else [1000,0,1000],
 }
-vars1D = ('mm')
+vars1D = ('mm',)
 vars2D = ('mm','tt')
+
+if do2D and doParametric:
+   logging.error('Parametric 2D fits are not yet supported')
+   raise
 
 #############
 ### Setup ###
@@ -57,6 +62,7 @@ sampleMap = getSampleMap()
 backgrounds = ['datadriven','TT']
 data = ['data']
 signame = 'HToAAH{h}A{a}'
+splinename = 'sig{h}'
 
 hmasses = [125,300,750]
 hmasses = [125]
@@ -64,8 +70,8 @@ amasses = [5,7,9,11,13,15,17,19,21]
 amasses = [5,11,15,21]
 
 signals = [signame.format(h=h,a=a) for h in hmasses for a in amasses]
-#signals = [signame.format(h=125,a=15)]
 signalToAdd = signame.format(**signalParams)
+signalSplines = [splinename.format(h=h) for h in hmasses]
 
 wrappers = {}
 for proc in backgrounds+signals+data:
@@ -140,7 +146,8 @@ def getSpline(histMap,h):
     results[h] = {}
     for a in amasses:
         ws = ROOT.RooWorkspace('sig')
-        ws.factory('x[{0}, {1}]'.format(*mmbinning[1:]))
+        binning = varBinning[vars1D[0]]
+        ws.factory('x[{0}, {1}]'.format(*binning[1:]))
         model = Models.Voigtian('sig',
             mean  = [a,0,30],
             width = [0.01*a,0,5],
@@ -174,11 +181,14 @@ def getSpline(histMap,h):
 histMap = {}
 for proc in backgrounds+signals:
     logging.info('Getting {0}'.format(proc))
-    histMap[proc] = getBinned(proc)
+    if proc=='datadriven':
+        histMap[proc] = getDatadriven()
+    else:
+        histMap[proc] = getBinned(proc)
 logging.info('Getting observed')
 if blind:
     samples = backgrounds
-    if addSignal: samples = backgrounds + signals
+    if addSignal: samples = backgrounds + [signalToAdd]
     hists = []
     for proc in samples:
         hists += [histMap[proc]]
@@ -208,9 +218,9 @@ analysis = 'HAA'
 reco = 'mmmt'
 
 if doParametric:
-
-    limits.addMH(*mmbinning[1:])
-    limits.addX(*mmbinning[1:])
+    binning = varBinning[vars1D[0]]
+    limits.addMH(*binning[1:])
+    limits.addX(*binning[1:])
     for h in hmasses:
         limits.addProcess(splinename.format(h=h),signal=True)
     for background in backgrounds:
@@ -281,8 +291,10 @@ statsyst = {}
 for proc in bgproc:
     statsyst[((proc,),(era,),(analysis,),(reco,))] = (statMapUp[proc],statMapDown[proc])
 if doParametric:
-    for h in hmasses:
-        statsyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(statMapUp,h),getSpline(statMapDown,h))
+    # TODO, uncertainty on parameter used to interpolate between
+    pass
+    #for h in hmasses:
+    #    statsyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(statMapUp,h),getSpline(statMapDown,h))
 else:
     for proc in sigproc:
         statsyst[((proc,),(era,),(analysis,),(reco,))] = (statMapUp[proc],statMapDown[proc])
@@ -294,8 +306,9 @@ limits.addSystematic('stat_{process}_{channel}','shape',systematics=statsyst)
 # lumi 2.3% for 2015 and 2.5% for 2016
 # https://twiki.cern.ch/twiki/bin/view/CMS/TWikiLUM#CurRec
 logging.info('Adding lumi systematic')
+lumiproc = systsplineproc if doParametric else systproc
 lumisyst = {
-    (systproc,(era,),('all',),('all',)): 1.025,
+    (lumiproc,(era,),('all',),('all',)): 1.025,
 }
 limits.addSystematic('lumi','lnN',systematics=lumisyst)
 
@@ -315,13 +328,15 @@ for proc in backgrounds+signals:
     if proc=='datadriven':
         puMapDown[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
     else:
-        puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeighDown' if x=='pileupWeight' else x for x in scaleVars]))
+        puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
 pusyst = {}
 for proc in bgproc:
     pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
 if doParametric:
-    for h in hmasses:
-        pusyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(puMapUp,h),getSpline(puMapDown,h))
+    # TODO, uncertainty on parameter used to interpolate between
+    pass
+    #for h in hmasses:
+    #    pusyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(puMapUp,h),getSpline(puMapDown,h))
 else:
     for proc in sigproc:
         pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])

@@ -352,7 +352,7 @@ class Limits(object):
                     obs = self.getObserved(era,analysis,channel,blind=blind,addSignal=addSignal)
                     label = 'data_obs_{0}'.format(blabel)
                     if isinstance(obs,ROOT.TH1):
-                        logging.info('{0}: {1}'.format(label,obs.Integral()))
+                        logging.debug('{0}: {1}'.format(label,obs.Integral()))
                         obs.SetName(label)
                         obs.SetTitle(label)
                         shapes += [obs]
@@ -363,7 +363,7 @@ class Limits(object):
                         else:
                             obs = obs.Integral()
                     else:
-                        logging.info('{0}: {1}'.format(label,obs))
+                        logging.debug('{0}: {1}'.format(label,obs))
                     # TODO: unbinned data handling
                     observations += ['{0}'.format(obs)]
         imax = len(bins)-1
@@ -389,7 +389,7 @@ class Limits(object):
                         exp = self.getExpected(process,era,analysis,channel)
                         label = '{0}_{1}'.format(processNames[colpos],binsForRates[colpos])
                         if isinstance(exp,ROOT.TH1):
-                            logging.info('{0}: {1}'.format(label,exp.Integral()))
+                            logging.debug('{0}: {1}'.format(label,exp.Integral()))
                             exp.SetName(label)
                             exp.SetTitle(label)
                             shapes += [exp]
@@ -408,12 +408,12 @@ class Limits(object):
                             #exp = pdf.createIntegral(argset).getVal()
                             exp = exp.getIntegral()
                         else:
-                            logging.info('{0}: {1}'.format(label,exp))
+                            logging.debug('{0}: {1}'.format(label,exp))
                         # TODO: unbinned handling
                         rates[colpos] = '{0:<10.4g}'.format(exp)
 
         # setup nuissances
-        logging.info('Systs available: {0}'.format([str(x) for x in sorted(self.systematics.keys())]))
+        logging.debug('Systs available: {0}'.format([str(x) for x in sorted(self.systematics.keys())]))
         systs = {}
         keys = []
         for era in eras:
@@ -427,7 +427,7 @@ class Limits(object):
 
 
         combinedSysts = self.__combineSystematics(*[systs[key] for key in systs])
-        logging.info('Systs to add: {0}'.format([str(x) for x in sorted(combinedSysts.keys())]))
+        logging.debug('Systs to add: {0}'.format([str(x) for x in sorted(combinedSysts.keys())]))
         systRows = []
         for syst in sorted(combinedSysts.keys()):
             thisRow = [syst,combinedSysts[syst]['mode']]
@@ -525,17 +525,17 @@ class Limits(object):
             f.write('-'*lineWidth+'\n')
 
             # process definition
-            logging.info('Bins: {0}'.format([str(x) for x in binsForRates]))
+            logging.debug('Bins: {0}'.format([str(x) for x in binsForRates]))
             f.write(getline(binsForRates))
             f.write(getline(processNames))
             f.write(getline(processNumbers))
-            logging.info('Rates: {0}'.format([str(x) for x in rates]))
+            logging.debug('Rates: {0}'.format([str(x) for x in rates]))
             f.write(getline(rates))
             f.write('-'*lineWidth+'\n')
 
             # nuissances
             for systRow in systRows:
-                logging.info('Systematic row: {0}'.format([str(x) for x in systRow]))
+                logging.debug('Systematic row: {0}'.format([str(x) for x in systRow]))
                 f.write(getline(systRow))
             f.write('-'*lineWidth+'\n')
 
