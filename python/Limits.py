@@ -129,6 +129,8 @@ class Limits(object):
             'lnN'  : log normal uncertainty shape
             'gmN X': gamma function uncertainty shape
             'shape': for shape based uncertainties
+            'param': for parameter on unbinned uncertainty
+            'flatParam': for freely floating parameter
         The values are set with the 'systematics' arguments. They are dictionaries with the form:
             systematics = {
                (processes,eras,analyses,channels) : value,

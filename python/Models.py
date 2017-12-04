@@ -56,6 +56,68 @@ class Model(object):
         if hasattr(self,'integral'): return self.integral
         return 1
 
+class ModelSpline(Model):
+
+    def __init__(self,name,**kwargs):
+        self.MH = kwargs.pop('MH','MH')
+        super(ModelSpline,self).__init__(name,**kwargs)
+
+    def setIntegral(self,masses,integrals):
+        self.masses = masses
+        self.integral = integrals
+
+    def getIntegral(self,ws):
+        if not hasattr(self,'integral'): return 1
+        integralName = '{0}_norm'.format(self.name) # TODO, better name
+        integralSpline  = ROOT.RooSpline1D(integralName,  integralName,  ws.var(self.MH), len(self.masses), array('d',self.masses), array('d',self.integrals))
+        # import to workspace
+        getattr(ws, "import")(integralSpline, ROOT.RooFit.RecycleConflictNodes())
+        # return name
+        return integralName
+
+class SplineParam(object):
+
+    def __init__(self,name,**kwargs):
+        self.name = name
+        self.kwargs = kwargs
+
+    def build(self,ws,label):
+        paramName = '{0}'.format(label) 
+        ws.factory('{0}[0,-10,10]'.format(paramName))
+
+class Spline(object):
+
+    def __init__(self,name,**kwargs):
+        self.name = name
+        self.mh = kwargs.pop('MH','MH')
+        self.kwargs = kwargs
+
+    def build(self,ws,label):
+        masses = self.kwargs.get('masses', [])
+        values = self.kwargs.get('values', [])
+        shifts = self.kwargs.get('shifts', {})
+        splineName = label
+        if shifts:
+            centralName = '{0}_central'.format(label)
+            splineCentral = ROOT.RooSpline1D(centralName,  centralName,  ws.var(self.mh), len(masses), array('d',masses), array('d',values))
+            getattr(ws, "import")(splineCentral, ROOT.RooFit.RecycleConflictNodes())
+            shiftFormula = '{0}'.format(centralName)
+            for shift in shifts:
+                up = [u-c for u,c in zip(shifts[shift]['up'],values)]
+                down = [d-c for d,c in zip(shifts[shift]['down'],values)]
+                upName = '{0}_{1}Up'.format(splineName,shift)
+                downName = '{0}_{1}Down'.format(splineName,shift)
+                splineUp   = ROOT.RooSpline1D(upName,  upName,  ws.var(self.mh), len(masses), array('d',masses), array('d',up))
+                splineDown = ROOT.RooSpline1D(downName,downName,ws.var(self.mh), len(masses), array('d',masses), array('d',down))
+                getattr(ws, "import")(splineUp, ROOT.RooFit.RecycleConflictNodes())
+                getattr(ws, "import")(splineDown, ROOT.RooFit.RecycleConflictNodes())
+                shiftFormula += ' + TMath::Max(0,{shift})*{upName} + TMath::Min(0,{shift})*{downName}'.format(shift=shift,upName=upName,downName=downName)
+            spline = ROOT.RooFormulaVar(splineName, splineName, shiftFormula, ROOT.RooArgList())
+        else:
+            spline = ROOT.RooSpline1D(splineName,  splineName,  ws.var(self.mh), len(masses), array('d',masses), array('d',values))
+        getattr(ws, "import")(spline, ROOT.RooFit.RecycleConflictNodes())
+
+
 class Gaussian(Model):
 
     def __init__(self,name,**kwargs):
@@ -209,4 +271,4 @@ class Sum(Model):
         else: # Don't do this if you have more than 2 pdfs ...
             if len(pdfs)>2: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
             sumargs = ['{0}'.format(pdf) if len(pdfs)==n+1 else '{0}_norm*{0}'.format(pdf) for n,pdf in enumerate(pdfs)]
-        ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs))
+        ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))

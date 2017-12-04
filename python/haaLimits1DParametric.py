@@ -186,25 +186,6 @@ else:
     hist = getBinned('data')
     histMap['data'] = hist
 
-############################
-### Run preliminary fits ###
-############################
-#results = {}
-#for h in hmasses:
-#    results[h] = {}
-#    for a in amasses:
-#        ws = ROOT.RooWorkspace('sig')
-#        ws.factory('x[{0}, {1}]'.format(*mmbinning[1:]))
-#        model = Models.Voigtian('sig',
-#            mean  = [a,0,30],
-#            width = [0.01*a,0,5],
-#            sigma = [0.01*a,0,5],
-#        )
-#        model.build(ws, 'sig')
-#        hist = histMap[signame.format(h=h,a=a)]
-#        results[h][a] = model.fit(ws, hist, '{0}_{1}'.format(h,a), save=True)
-
-
 #####################
 ### Create Limits ###
 #####################
@@ -227,19 +208,6 @@ for background in backgrounds:
 
 # add models
 for h in hmasses:
-    #for a in amasses:
-    #    print h, a, results[h][a]
-    #model = Models.VoigtianSpline(splinename.format(h=h),
-    #    **{
-    #        'masses' : amasses,
-    #        'means'  : [results[h][a]['mean_{0}_{1}'.format(h,a)] for a in amasses],
-    #        'widths' : [results[h][a]['width_{0}_{1}'.format(h,a)] for a in amasses],
-    #        'sigmas' : [results[h][a]['sigma_{0}_{1}'.format(h,a)] for a in amasses],
-    #    }
-    #)
-    #integrals = [histMap[signame.format(h=h,a=a)].Integral() for a in amasses]
-    #integral = np.mean(integrals)
-    #model.setIntegral(integral)
     model = getSpline(histMap,h)
     limits.setExpected(splinename.format(h=h),era,analysis,reco,model)
 
