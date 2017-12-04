@@ -25,15 +25,26 @@ regions = {
 }
 
 doParametric = False
+do2D = False
 blind = True
 selection = regions['A']
-scalefactor = '*'.join(['genWeight','pileupWeight','triggerEfficiency'])
+scaleVars = ['genWeight','pileupWeight','triggerEfficiency']
+scalefactor = '*'.join(scaleVars)
 addSignal = True
 signalParams = {'h': 125, 'a': 15}
 wsname = 'w'
-mmbinning = [260,4,30]
-mtbinning = [600,0,60]
-hbinning  = [100,0,1000]
+varNames = {
+    'mm': 'amm_mass',
+    'tt': 'att_mass',
+    'h' : 'h_mass',
+}
+varBinning = {
+    'mm' : [260,4,30],
+    'tt' : [600,0,60],
+    'h'  : [100,0,1000],
+}
+vars1D = ('mm')
+vars2D = ('mm','tt')
 
 #############
 ### Setup ###
@@ -71,7 +82,10 @@ def getBinned(proc,**kwargs):
 
     hists = ROOT.TList()
     for sample in sampleMap[proc]:
-        hist = wrappers[sample].getTempHist(sample,sel,sf,'amm_mass',mmbinning)
+        if do2D:
+            hist = wrappers[sample].getTempHist2D(sample,sel,sf,varNames[vars2D[0]],varNames[vars2D[1]],varBinning[vars2D[0]],varBinning[vars2D[1]])
+        else:
+            hist = wrappers[sample].getTempHist(sample,sel,sf,varNames[vars1D[0]],varBinning[vars1D[0]])
         hists.Add(hist)
     if hists.IsEmpty():
         hist = 0
@@ -294,14 +308,14 @@ puMapDown = {}
 for proc in backgrounds+signals:
     logging.info('Getting {0} PU up'.format(proc))
     if proc=='datadriven':
-        puMapUp[proc] = getDatadriven(scalefactor='*'.join(['genWeight','pileupWeightUp','triggerEfficiency']))
+        puMapUp[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
     else:
-        puMapUp[proc] = getBinned(proc,scalefactor='*'.join(['genWeight','pileupWeightUp','triggerEfficiency']))
+        puMapUp[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
     logging.info('Getting {0} PU down'.format(proc))
     if proc=='datadriven':
-        puMapDown[proc] = getDatadriven(scalefactor='*'.join(['genWeight','pileupWeightDown','triggerEfficiency']))
+        puMapDown[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
     else:
-        puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['genWeight','pileupWeightDown','triggerEfficiency']))
+        puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeighDown' if x=='pileupWeight' else x for x in scaleVars]))
 pusyst = {}
 for proc in bgproc:
     pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
@@ -318,7 +332,7 @@ limits.addSystematic('pu','shape',systematics=pusyst)
 ######################
 directory = 'datacards_shape/{0}'.format('MuMuTauTau')
 python_mkdir(directory)
-datacard = '{0}/mmmt_1d_{1}'.format(directory,'parametric' if doParametric else 'binned')
+datacard = '{0}/mmmt_{1}_{2}'.format(directory, '2d' if do2D else '1d', 'parametric' if doParametric else 'binned')
 processes = {}
 if doParametric:
     for h in hmasses:
