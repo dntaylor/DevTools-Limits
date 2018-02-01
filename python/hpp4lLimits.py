@@ -46,8 +46,9 @@ for s in samples + ['data']:
     datadrivenSamples += sigMap[s]
 
 counters = {}
-shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
-shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn',]
+#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
+shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn']
+#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn',]
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']
@@ -227,7 +228,7 @@ for mode in modes:
         results = {}
         limits = Limits()
     
-        limits.addEra('13TeV80X')
+        limits.addEra('Era13TeV2016')
         limits.addAnalysis('Hpp4l')
         
         recoChans = getRecoChans(mode)
@@ -247,7 +248,7 @@ for mode in modes:
         staterr = {}
         uncerr = {x:{} for x in shiftTypes}
         uncerr_store = {x:{} for x in shiftTypes}
-        era = '13TeV80X'
+        era = 'Era13TeV2016'
         analysis = 'Hpp4l'
 
         # read uncerrtainties from file
@@ -418,5 +419,5 @@ for mode in modes:
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp4l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass),processes=signals+backgrounds,blind=blind)
-        limits.printCard('{0}/{1}R.txt'.format(directory,mass),processes=signalsR+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}'.format(directory,mass),processes=signals+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}R'.format(directory,mass),processes=signalsR+backgrounds,blind=blind)

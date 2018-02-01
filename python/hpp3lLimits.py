@@ -47,8 +47,9 @@ for s in samples + ['data']:
     datadrivenSamples += sigMap[s]
 
 counters = {}
-shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
-shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn']
+#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
+shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn']
+#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn']
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']
@@ -256,7 +257,7 @@ for mode in modes:
         results = {}
         limits = Limits()
     
-        limits.addEra('13TeV80X')
+        limits.addEra('Era13TeV2016')
         limits.addAnalysis('Hpp3l')
         limits.addAnalysis('Hpp3lAP')
         limits.addAnalysis('Hpp3lPP')
@@ -280,7 +281,7 @@ for mode in modes:
         staterr = {}
         uncerr = {x:{} for x in shiftTypes}
         uncerr_store = {x:{} for x in shiftTypes}
-        era = '13TeV80X'
+        era = 'Era13TeV2016'
         analysis = 'Hpp3l'
 
         # read uncerrtainties from file
@@ -520,7 +521,7 @@ for mode in modes:
         # print the datacard
         directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
         python_mkdir(directory)
-        limits.printCard('{0}/{1}.txt'.format(directory,mass),analyses=['Hpp3l'],processes=signalsAP+signalsPP+backgrounds,blind=blind)
-        limits.printCard('{0}/{1}AP.txt'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds,blind=blind)
-        limits.printCard('{0}/{1}PP.txt'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds,blind=blind)
-        limits.printCard('{0}/{1}PPR.txt'.format(directory,mass),analyses=['Hpp3lPPR'],processes=signalsPPR+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}'.format(directory,mass),analyses=['Hpp3l'],processes=signalsAP+signalsPP+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}AP'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}PP'.format(directory,mass),analyses=['Hpp3lPP'],processes=signalsPP+backgrounds,blind=blind)
+        limits.printCard('{0}/{1}PPR'.format(directory,mass),analyses=['Hpp3lPPR'],processes=signalsPPR+backgrounds,blind=blind)
