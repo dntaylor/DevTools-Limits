@@ -44,6 +44,12 @@ def create_datacard(args):
        logging.error('Parametric 2D fits are not yet supported')
        raise
     
+    varHists = {
+        'mm' : 'ammMass',
+        'tt' : 'attMass',
+        'h'  : 'hMass',
+        'hkf': 'hMassKinFit',
+    }
     varNames = {
         'mm' : 'amm_mass',
         'tt' : 'att_mass',
@@ -65,7 +71,7 @@ def create_datacard(args):
     #backgrounds = ['JPsi','Upsilon', 'W', 'Z', 'TT', 'WW', 'WZ', 'ZZ']
     #backgrounds = ['W', 'Z', 'TT', 'WW', 'WZ', 'ZZ']
     #backgrounds = ['W', 'Z', 'TT']
-    backgrounds = ['datadriven','TT']
+    backgrounds = ['datadriven']
     data = ['data']
     signame = 'HToAAH{h}A{a}'
     splinename = 'sig{h}'
@@ -88,6 +94,31 @@ def create_datacard(args):
     #################
     ### Utilities ###
     #################
+    def getHist(proc,**kwargs):
+        if do2D:
+            plot = '{}_{}'.format(*[varHist[v] for v in var])
+        else:
+            plot = varHists[var[0]]
+        region = 'A'
+        plotname = 'region{}/{}'.format(region,plot)
+        hists = [wrappers[s].getHist(plotname) for s in sampleMap[proc]]
+        hist = sumHists(proc+region,*hists)
+        hist.Rebin(10)
+        return hist
+    
+    def getDatadrivenHist(**kwargs):
+        if do2D:
+            plot = '{}_{}'.format(*[varHist[v] for v in var])
+        else:
+            plot = varHists[var[0]]
+        source = 'B'
+        region = 'A'
+        plotname = 'region{}_fakeFor{}/{}'.format(source,region,plot)
+        hists = [wrappers[s].getHist(plotname) for s in sampleMap['data']]
+        hist = sumHists('data'+region+source,*hists)
+        hist.Rebin(10)
+        return hist
+    
     def getBinned(proc,**kwargs):
         sf = kwargs.pop('scalefactor','1' if proc=='data' else scalefactor)
         sel = kwargs.pop('selection',selection)
@@ -106,8 +137,8 @@ def create_datacard(args):
             hist.Reset()
             hist.Merge(hists)
         return hist
-    
-    def getDatadriven(**kwargs):
+
+    def getDatadrivenTemp(**kwargs):
         sf = kwargs.pop('scalefactor',scalefactor)
     
         # region D
@@ -188,9 +219,11 @@ def create_datacard(args):
     for proc in backgrounds+signals:
         logging.info('Getting {0}'.format(proc))
         if proc=='datadriven':
-            histMap[proc] = getDatadriven()
+            #histMap[proc] = getDatadriven()
+            histMap[proc] = getDatadrivenHist()
         else:
-            histMap[proc] = getBinned(proc)
+            #histMap[proc] = getBinned(proc)
+            histMap[proc] = getHist(proc)
     logging.info('Getting observed')
     if blind:
         samples = backgrounds
@@ -321,39 +354,39 @@ def create_datacard(args):
     ##############
     ### Pileup ###
     ##############
-    logging.info('Adding pileup systematic')
-    puMapUp = {}
-    puMapDown = {}
-    for proc in backgrounds+signals:
-        logging.info('Getting {0} PU up'.format(proc))
-        if proc=='datadriven':
-            puMapUp[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
-        else:
-            puMapUp[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
-        logging.info('Getting {0} PU down'.format(proc))
-        if proc=='datadriven':
-            puMapDown[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
-        else:
-            puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
-    pusyst = {}
-    for proc in bgproc:
-        pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
-    if doParametric:
-        # TODO, uncertainty on parameter used to interpolate between
-        pass
-        #for h in hmasses:
-        #    pusyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(puMapUp,h),getSpline(puMapDown,h))
-    else:
-        for proc in sigproc:
-            pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
-    limits.addSystematic('pu','shape',systematics=pusyst)
+    #logging.info('Adding pileup systematic')
+    #puMapUp = {}
+    #puMapDown = {}
+    #for proc in backgrounds+signals:
+    #    logging.info('Getting {0} PU up'.format(proc))
+    #    if proc=='datadriven':
+    #        puMapUp[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
+    #    else:
+    #        puMapUp[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightUp' if x=='pileupWeight' else x for x in scaleVars]))
+    #    logging.info('Getting {0} PU down'.format(proc))
+    #    if proc=='datadriven':
+    #        puMapDown[proc] = getDatadriven(scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
+    #    else:
+    #        puMapDown[proc] = getBinned(proc,scalefactor='*'.join(['pileupWeightDown' if x=='pileupWeight' else x for x in scaleVars]))
+    #pusyst = {}
+    #for proc in bgproc:
+    #    pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
+    #if doParametric:
+    #    # TODO, uncertainty on parameter used to interpolate between
+    #    pass
+    #    #for h in hmasses:
+    #    #    pusyst[((splinename.format(h=h),),(era,),(analysis,),(reco,))] = (getSpline(puMapUp,h),getSpline(puMapDown,h))
+    #else:
+    #    for proc in sigproc:
+    #        pusyst[((proc,),(era,),(analysis,),(reco,))] = (puMapUp[proc],puMapDown[proc])
+    #limits.addSystematic('pu','shape',systematics=pusyst)
     
     ######################
     ### Print datacard ###
     ######################
     directory = 'datacards_shape/{0}'.format('MuMuTauTau')
     python_mkdir(directory)
-    datacard = '{0}/mmmt_{1}'.format(directory, args.tag)
+    datacard = '{0}/mmmt_{1}'.format(directory, args.tag) if args.tag else '{}/mmmt'.format(directory)
     processes = {}
     if doParametric:
         for h in hmasses:
