@@ -6,6 +6,7 @@ import numpy as np
 import argparse
 
 import ROOT
+ROOT.PyConfig.IgnoreCommandLineOptions = True
 ROOT.gROOT.SetBatch()
 
 from DevTools.Limits.Limits import Limits
@@ -29,6 +30,7 @@ def create_datacard(args):
         'D': '(am1_isolation>0.15 || am2_isolation>0.15) && ath_byVLooseIsolationMVArun2v1DBoldDMwLT<0.5' + ' && ' + baseCut,
     }
     
+    doMatrix = True
     doParametric = args.parametric
     do2D = len(args.fitVars)==2
     blind = not args.unblind
@@ -95,6 +97,7 @@ def create_datacard(args):
     ### Utilities ###
     #################
     def getHist(proc,**kwargs):
+        scale = kwargs.pop('scale',1)
         if do2D:
             plot = '{}_{}'.format(*[varHist[v] for v in var])
         else:
@@ -104,6 +107,7 @@ def create_datacard(args):
         hists = [wrappers[s].getHist(plotname) for s in sampleMap[proc]]
         hist = sumHists(proc+region,*hists)
         hist.Rebin(10)
+        hist.Scale(scale)
         return hist
     
     def getDatadrivenHist(**kwargs):
@@ -115,6 +119,50 @@ def create_datacard(args):
         region = 'A'
         plotname = 'region{}_fakeFor{}/{}'.format(source,region,plot)
         hists = [wrappers[s].getHist(plotname) for s in sampleMap['data']]
+        hist = sumHists('data'+region+source,*hists)
+        hist.Rebin(10)
+        return hist
+    
+    def getMatrixHist(proc,**kwargs):
+        scale = kwargs.pop('scale',1)
+        if do2D:
+            plot = '{}_{}'.format(*[varHist[v] for v in var])
+        else:
+            plot = varHists[var[0]]
+        region = 'A'
+        sources = ['A','C']
+        fakeRegion = 'B'
+        fakeSources = ['B','D']
+        doPrompt = True
+        doFake = False
+        applot = ['matrixP/region{}_for{}/{}'.format(source,region,plot) for source in sources]
+        afplot = ['matrixF/region{}_for{}/{}'.format(source,region,plot) for source in sources]
+        hists = []
+        for s in sampleMap[proc]:
+            if doPrompt: hists += [wrappers[s].getHist(plotname) for plotname in applot]
+            if doFake: hists += [wrappers[s].getHist(plotname) for plotname in afplot]
+        hist = sumHists(proc+region+source,*hists)
+        hist.Rebin(10)
+        hist.Scale(scale)
+        return hist
+    
+    def getMatrixDatadrivenHist(**kwargs):
+        if do2D:
+            plot = '{}_{}'.format(*[varHist[v] for v in var])
+        else:
+            plot = varHists[var[0]]
+        region = 'A'
+        sources = ['A','C']
+        fakeRegion = 'B'
+        fakeSources = ['B','D']
+        doPrompt = True
+        doFake = False
+        bpplot = ['matrixP/region{}_for{}_fakeFor{}/{}'.format(source,fakeRegion,region,plot) for source in fakeSources]
+        bfplot = ['matrixF/region{}_for{}_fakeFor{}/{}'.format(source,fakeRegion,region,plot) for source in fakeSources]
+        hists = []
+        for s in sampleMap['data']:
+            if doPrompt: hists += [wrappers[s].getHist(plotname) for plotname in bpplot]
+            if doFake: hists += [wrappers[s].getHist(plotname) for plotname in bfplot]
         hist = sumHists('data'+region+source,*hists)
         hist.Rebin(10)
         return hist
@@ -220,10 +268,17 @@ def create_datacard(args):
         logging.info('Getting {0}'.format(proc))
         if proc=='datadriven':
             #histMap[proc] = getDatadriven()
-            histMap[proc] = getDatadrivenHist()
+            if doMatrix:
+                histMap[proc] = getMatrixDatadrivenHist()
+            else:
+                histMap[proc] = getDatadrivenHist()
         else:
             #histMap[proc] = getBinned(proc)
-            histMap[proc] = getHist(proc)
+            scale = 0.05 if proc in signals else 1
+            if doMatrix:
+                histMap[proc] = getMatrixHist(proc,scale=scale)
+            else:
+                histMap[proc] = getHist(proc,scale=scale)
     logging.info('Getting observed')
     if blind:
         samples = backgrounds
