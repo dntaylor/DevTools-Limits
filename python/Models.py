@@ -133,6 +133,7 @@ class Gaussian(Model):
         ws.factory('{0}[{1}, {2}, {3}]'.format(sigmaName,*sigma))
         # build model
         ws.factory("Gaussian::{0}({1}, {2}, {3})".format(label,self.x,meanName,sigmaName))
+        self.params = [meanName,sigmaName]
 
 class GaussianSpline(Model):
 
@@ -153,6 +154,7 @@ class GaussianSpline(Model):
         getattr(ws, "import")(sigmaSpline, ROOT.RooFit.RecycleConflictNodes())
         # build model
         ws.factory("Gaussian::{0}({1}, {2}, {3})".format(label,self.x,meanName,sigmaName))
+        self.params = [meanName,sigmaName]
 
 class BreitWigner(Model):
 
@@ -169,6 +171,7 @@ class BreitWigner(Model):
         ws.factory('{0}[{1}, {2}, {3}]'.format(widthName,*width))
         # build model
         ws.factory("BreitWigner::{0}({1}, {2}, {3})".format(label,self.x,meanName,widthName))
+        self.params = [meanName,widthName]
 
 class BreitWignerSpline(Model):
 
@@ -177,7 +180,7 @@ class BreitWignerSpline(Model):
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
-        sigmaName = 'sigma_{0}'.format(label)
+        widthName = 'width_{0}'.format(label)
         masses = self.kwargs.get('masses', [])
         means  = self.kwargs.get('means',  [])
         widths = self.kwargs.get('widths', [])
@@ -189,6 +192,7 @@ class BreitWignerSpline(Model):
         getattr(ws, "import")(widthSpline, ROOT.RooFit.RecycleConflictNodes())
         # build model
         ws.factory("BreitWigner::{0}({1}, {2}, {3})".format(label,self.x,meanName,widthName))
+        self.params = [meanName,widthName]
 
 class Voigtian(Model):
 
@@ -208,6 +212,7 @@ class Voigtian(Model):
         ws.factory('{0}[{1}, {2}, {3}]'.format(sigmaName,*sigma))
         # build model
         ws.factory("Voigtian::{0}({1}, {2}, {3}, {4})".format(label,self.x,meanName,widthName,sigmaName))
+        self.params = [meanName,widthName,sigmaName]
 
 class VoigtianSpline(Model):
 
@@ -232,6 +237,7 @@ class VoigtianSpline(Model):
         getattr(ws, "import")(sigmaSpline, ROOT.RooFit.RecycleConflictNodes())
         # build model
         ws.factory("Voigtian::{0}({1}, {2}, {3}, {4})".format(label,self.x,meanName,widthName,sigmaName))
+        self.params = [meanName,widthName,sigmaName]
 
 class Exponential(Model):
 
@@ -245,6 +251,7 @@ class Exponential(Model):
         ws.factory('{0}[{1}, {2}, {3}]'.format(lambdaName,*lamb))
         # build model
         ws.factory("Exponential::{0}({1}, {2})".format(label,self.x,lambdaName))
+        self.params = [lambdaName]
 
 class Sum(Model):
 
@@ -256,19 +263,20 @@ class Sum(Model):
     def build(self,ws,label):
         pdfs = []
         for n, (pdf, r) in enumerate(self.kwargs.iteritems()):
-            ws.factory('{0}_norm[{1},{2}]'.format(n,*r))
+            ws.factory('{0}_norm[{1},{2}]'.format(pdf,*r))
             pdfs += [pdf]
         # build model
-        if doRecursive:
+        if self.doRecursive:
             prev = ''
             sumargs = []
             for pdf in pdfs:
                 curr = '{0}_norm*{1}*{0}'.format(pdf,prev) if prev else '{0}_norm*{0}'.format(pdf)
                 sumargs += [curr]
                 prev = '{0}*(1-{1}_norm)'.format(prev,pdf) if prev else '(1-{0}_norm)'.format(pdf)
-        elif doExtended:
+        elif self.doExtended:
             sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs]
         else: # Don't do this if you have more than 2 pdfs ...
             if len(pdfs)>2: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
             sumargs = ['{0}'.format(pdf) if len(pdfs)==n+1 else '{0}_norm*{0}'.format(pdf) for n,pdf in enumerate(pdfs)]
         ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))
+        self.params = ['{}_norm'.format(pdf) for pdf in pdfs]
