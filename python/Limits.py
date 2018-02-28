@@ -5,7 +5,7 @@ import numbers
 
 import ROOT
 
-from DevTools.Limits.Models import Model
+from DevTools.Limits.Models import Model, ModelSpline
 
 class Limits(object):
     '''
@@ -406,7 +406,10 @@ class Limits(object):
                             #pdf = self.workspace.pdf(label)
                             #exp = pdf.getVal(argset)
                             #exp = pdf.createIntegral(argset).getVal()
-                            exp = exp.getIntegral()
+                            if isinstance(exp,ModelSpline):
+                                exp = exp.getIntegral(self.workspace)
+                            else:
+                                exp = exp.getIntegral()
                         else:
                             logging.debug('{0}: {1}'.format(label,exp))
                         # TODO: unbinned handling

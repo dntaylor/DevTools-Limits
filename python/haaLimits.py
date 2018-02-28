@@ -64,6 +64,12 @@ def create_datacard(args):
         'h'  : [50,0,1000] if do2D else [1000,0,1000],
         'hkf': [50,0,1000] if do2D else [1000,0,1000],
     }
+    rebinning = {
+        'mm' : 5, # 10 MeV -> 50 MeV
+        'tt' : 1, # 100 MeV -> 100 MeV
+        'h'  : 1, # 1 GeV -> 1 GeV
+        'kkf': 1, # 1 GeV -> 5 GeV
+    }
 
     #############
     ### Setup ###
@@ -86,47 +92,60 @@ def create_datacard(args):
     signals = [signame.format(h=h,a=a) for h in hmasses for a in amasses]
     signalToAdd = signame.format(**signalParams)
     signalSplines = [splinename.format(h=h) for h in hmasses]
+
+    shifts = ['lepUp','lepDown','puUp','puDown','fakeUp','fakeDown','trigUp','trigDown']
     
     wrappers = {}
     for proc in backgrounds+signals+data:
         if proc=='datadriven': continue
         for sample in sampleMap[proc]:
             wrappers[sample] = NtupleWrapper('MuMuTauTau',sample,new=True,version='80X')
+            for shift in shifts:
+                wrappers[sample+shift] = NtupleWrapper('MuMuTauTau',sample,new=True,version='80X',shift=shift)
     
     #################
     ### Utilities ###
     #################
     def getHist(proc,**kwargs):
         scale = kwargs.pop('scale',1)
+        shift = kwargs.pop('shift','')
         if do2D:
-            plot = '{}_{}'.format(*[varHist[v] for v in var])
+            plot = '{}_{}'.format(*[varHists[v] for v in var])
         else:
             plot = varHists[var[0]]
         region = 'A'
         plotname = 'region{}/{}'.format(region,plot)
-        hists = [wrappers[s].getHist(plotname) for s in sampleMap[proc]]
+        if do2D:
+            hists = [wrappers[s+shift].getHist2D(plotname) for s in sampleMap[proc]]
+        else:
+            hists = [wrappers[s+shift].getHist(plotname) for s in sampleMap[proc]]
         hist = sumHists(proc+region,*hists)
-        hist.Rebin(10)
+        #hist.Rebin(10)
         hist.Scale(scale)
         return hist
     
     def getDatadrivenHist(**kwargs):
+        shift = kwargs.pop('shift','')
         if do2D:
-            plot = '{}_{}'.format(*[varHist[v] for v in var])
+            plot = '{}_{}'.format(*[varHists[v] for v in var])
         else:
             plot = varHists[var[0]]
         source = 'B'
         region = 'A'
         plotname = 'region{}_fakeFor{}/{}'.format(source,region,plot)
-        hists = [wrappers[s].getHist(plotname) for s in sampleMap['data']]
+        if do2D:
+            hists = [wrappers[s+shift].getHist2D(plotname) for s in sampleMap['data']]
+        else:
+            hists = [wrappers[s+shift].getHist(plotname) for s in sampleMap['data']]
         hist = sumHists('data'+region+source,*hists)
-        hist.Rebin(10)
+        #hist.Rebin(10)
         return hist
     
     def getMatrixHist(proc,**kwargs):
         scale = kwargs.pop('scale',1)
+        shift = kwargs.pop('shift','')
         if do2D:
-            plot = '{}_{}'.format(*[varHist[v] for v in var])
+            plot = '{}_{}'.format(*[varHists[v] for v in var])
         else:
             plot = varHists[var[0]]
         region = 'A'
@@ -139,16 +158,21 @@ def create_datacard(args):
         afplot = ['matrixF/region{}_for{}/{}'.format(source,region,plot) for source in sources]
         hists = []
         for s in sampleMap[proc]:
-            if doPrompt: hists += [wrappers[s].getHist(plotname) for plotname in applot]
-            if doFake: hists += [wrappers[s].getHist(plotname) for plotname in afplot]
+            if do2D:
+                if doPrompt: hists += [wrappers[s+shift].getHist2D(plotname) for plotname in applot]
+                if doFake: hists += [wrappers[s+shift].getHist2D(plotname) for plotname in afplot]
+            else:
+                if doPrompt: hists += [wrappers[s+shift].getHist(plotname) for plotname in applot]
+                if doFake: hists += [wrappers[s+shift].getHist(plotname) for plotname in afplot]
         hist = sumHists(proc+region+source,*hists)
-        hist.Rebin(10)
+        #hist.Rebin(10)
         hist.Scale(scale)
         return hist
     
     def getMatrixDatadrivenHist(**kwargs):
+        shift = kwargs.pop('shift','')
         if do2D:
-            plot = '{}_{}'.format(*[varHist[v] for v in var])
+            plot = '{}_{}'.format(*[varHists[v] for v in var])
         else:
             plot = varHists[var[0]]
         region = 'A'
@@ -161,22 +185,27 @@ def create_datacard(args):
         bfplot = ['matrixF/region{}_for{}_fakeFor{}/{}'.format(source,fakeRegion,region,plot) for source in fakeSources]
         hists = []
         for s in sampleMap['data']:
-            if doPrompt: hists += [wrappers[s].getHist(plotname) for plotname in bpplot]
-            if doFake: hists += [wrappers[s].getHist(plotname) for plotname in bfplot]
+            if do2D:
+                if doPrompt: hists += [wrappers[s+shift].getHist2D(plotname) for plotname in bpplot]
+                if doFake: hists += [wrappers[s+shift].getHist2D(plotname) for plotname in bfplot]
+            else:
+                if doPrompt: hists += [wrappers[s+shift].getHist(plotname) for plotname in bpplot]
+                if doFake: hists += [wrappers[s+shift].getHist(plotname) for plotname in bfplot]
         hist = sumHists('data'+region+source,*hists)
-        hist.Rebin(10)
+        #hist.Rebin(10)
         return hist
     
     def getBinned(proc,**kwargs):
         sf = kwargs.pop('scalefactor','1' if proc=='data' else scalefactor)
         sel = kwargs.pop('selection',selection)
+        shift = kwargs.pop('shift','')
     
         hists = ROOT.TList()
         for sample in sampleMap[proc]:
             if do2D:
-                hist = wrappers[sample].getTempHist2D(sample,sel,sf,varNames[var[0]],varNames[var[1]],varBinning[var[0]],varBinning[var[1]])
+                hist = wrappers[sample+shift].getTempHist2D(sample,sel,sf,varNames[var[0]],varNames[var[1]],varBinning[var[0]],varBinning[var[1]])
             else:
-                hist = wrappers[sample].getTempHist(sample,sel,sf,varNames[var[0]],varBinning[var[0]])
+                hist = wrappers[sample+shift].getTempHist(sample,sel,sf,varNames[var[0]],varBinning[var[0]])
             hists.Add(hist)
         if hists.IsEmpty():
             hist = 0
@@ -254,8 +283,7 @@ def create_datacard(args):
             }
         )
         integrals = [histMap[signame.format(h=h,a=a)].Integral() for a in amasses]
-        integral = np.mean(integrals)
-        model.setIntegral(integral)
+        model.setIntegral(amasses,integrals)
     
         return model
     
@@ -279,6 +307,10 @@ def create_datacard(args):
                 histMap[proc] = getMatrixHist(proc,scale=scale)
             else:
                 histMap[proc] = getHist(proc,scale=scale)
+        if do2D:
+            pass # TODO, figure out how to rebin 2D
+        else:
+            histMap[proc].Rebin(rebinning[var[0]])
     logging.info('Getting observed')
     if blind:
         samples = backgrounds
@@ -405,6 +437,35 @@ def create_datacard(args):
         (lumiproc,(era,),('all',),('all',)): 1.025,
     }
     limits.addSystematic('lumi','lnN',systematics=lumisyst)
+
+    ############
+    ### muon ###
+    ############
+    # from z: 1 % + 0.5 % + 0.5 % per muon for id + iso + trig (pt>20)
+    logging.info('Adding mu id+iso systematic')
+    muproc = systsplineproc if doParametric else systproc
+    musyst = {
+        (muproc,(era,),('all',),('all',)): 1+sqrt(sum([0.01**2,0.005**2]*2+[0.01**2])), # 2 lead have iso, tau_mu doesnt
+    }
+    limits.addSystematic('muid','lnN',systematics=musyst)
+
+    logging.info('Adding mu trig systematic')
+    musyst = {
+        (muproc,(era,),('all',),('all',)): 1.005, # 1 triggering muon
+    }
+    limits.addSystematic('mutrig','lnN',systematics=musyst)
+
+    ###########
+    ### tau ###
+    ###########
+    # 5% on sf 0.99 (VL/L) or 0.97 (M)
+    logging.info('Adding mu id+iso systematic')
+    tauproc = systsplineproc if doParametric else systproc
+    tausyst = {
+        (tauproc,(era,),('all',),('all',)): 1.05,
+    }
+    limits.addSystematic('tauid','lnN',systematics=tausyst)
+
     
     ##############
     ### Pileup ###

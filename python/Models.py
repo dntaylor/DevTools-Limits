@@ -64,16 +64,16 @@ class ModelSpline(Model):
 
     def setIntegral(self,masses,integrals):
         self.masses = masses
-        self.integral = integrals
+        self.integrals = integrals
 
     def getIntegral(self,ws):
-        if not hasattr(self,'integral'): return 1
+        if not hasattr(self,'integrals'): return 1
         integralName = '{0}_norm'.format(self.name) # TODO, better name
         integralSpline  = ROOT.RooSpline1D(integralName,  integralName,  ws.var(self.MH), len(self.masses), array('d',self.masses), array('d',self.integrals))
         # import to workspace
         getattr(ws, "import")(integralSpline, ROOT.RooFit.RecycleConflictNodes())
         # return name
-        return integralName
+        return 1
 
 class SplineParam(object):
 
@@ -117,11 +117,41 @@ class Spline(object):
             spline = ROOT.RooSpline1D(splineName,  splineName,  ws.var(self.mh), len(masses), array('d',masses), array('d',values))
         getattr(ws, "import")(spline, ROOT.RooFit.RecycleConflictNodes())
 
+class Chebychev(Model):
+
+    def __init__(self,name,**kwargs):
+        super(Chebychev,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        order = self.kwargs.get('order',1)
+        params = ['p{}_{}'.format(o,label) for o in range(order)]
+        ranges = [self.kwargs.get('p{}'.format(o),[0,-1,1]) for o in range(order)]
+        ws.factory('Chebychev::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[{}]'.format(p,','.join([str(r) for r in rs])) for p,rs in zip(params,ranges)])))
+        self.params = params
+
+class ChebychevSpline(ModelSpline):
+
+    def __init__(self,name,**kwargs):
+        super(ChebychevSpline,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        order = self.kwargs.get('order',1)
+        masses = self.kwargs.get('masses',[])
+        paramSplines = {}
+        params = []
+        for o in range(order):
+            ps = self.kwargs.get('p{}'.format(o), [])
+            paramName = 'p{}_{}'.format(o,label)
+            paramSplines[o] = ROOT.RooSpline1D(paramName, paramName, ws.var('MH'), len(masses), array('d',masses), array('d',ps))
+            getattr(ws, "import")(paramSplines[o], ROOT.RooFit.RecycleConflictNodes())
+            params += [paramName]
+        ws.factory('Chebychev::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[0, -10, 10]'.format(p) for p in params])))
+        self.params = params
 
 class Gaussian(Model):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(Gaussian,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -135,10 +165,10 @@ class Gaussian(Model):
         ws.factory("Gaussian::{0}({1}, {2}, {3})".format(label,self.x,meanName,sigmaName))
         self.params = [meanName,sigmaName]
 
-class GaussianSpline(Model):
+class GaussianSpline(ModelSpline):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(GaussianSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -159,7 +189,7 @@ class GaussianSpline(Model):
 class BreitWigner(Model):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(BreitWigner,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -173,10 +203,10 @@ class BreitWigner(Model):
         ws.factory("BreitWigner::{0}({1}, {2}, {3})".format(label,self.x,meanName,widthName))
         self.params = [meanName,widthName]
 
-class BreitWignerSpline(Model):
+class BreitWignerSpline(ModelSpline):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(BreitWignerSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -197,7 +227,7 @@ class BreitWignerSpline(Model):
 class Voigtian(Model):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(Voigtian,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -214,10 +244,10 @@ class Voigtian(Model):
         ws.factory("Voigtian::{0}({1}, {2}, {3}, {4})".format(label,self.x,meanName,widthName,sigmaName))
         self.params = [meanName,widthName,sigmaName]
 
-class VoigtianSpline(Model):
+class VoigtianSpline(ModelSpline):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(VoigtianSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         meanName = 'mean_{0}'.format(label)
@@ -242,7 +272,7 @@ class VoigtianSpline(Model):
 class Exponential(Model):
 
     def __init__(self,name,**kwargs):
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(Exponential,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
         lambdaName = 'lambda_{0}'.format(label)
@@ -258,25 +288,42 @@ class Sum(Model):
     def __init__(self,name,**kwargs):
         self.doRecursive = kwargs.pop('recursive',False)
         self.doExtended = kwargs.pop('extended',False)
-        super(self.__class__,self).__init__(name,**kwargs)
+        super(Sum,self).__init__(name,**kwargs)
+
+    #def recurse(self,curr,remaining):
+    #    if len(remaining):
+    #        return '{0}_norm*{0} + (1-{0}_norm)*({2})'.format(curr,self.recurse(remaining[0],remaining[1:]))
+    #    else:
+    #        return '{0}_norm*{0}'.format(curr)
 
     def build(self,ws,label):
         pdfs = []
+        sumpdfs = []
         for n, (pdf, r) in enumerate(self.kwargs.iteritems()):
-            ws.factory('{0}_norm[{1},{2}]'.format(pdf,*r))
+            if r:
+                ws.factory('{0}_norm[{1},{2}]'.format(pdf,*r))
+                sumpdfs += [pdf]
             pdfs += [pdf]
+        pdf = sorted(pdfs)
         # build model
         if self.doRecursive:
-            prev = ''
-            sumargs = []
-            for pdf in pdfs:
-                curr = '{0}_norm*{1}*{0}'.format(pdf,prev) if prev else '{0}_norm*{0}'.format(pdf)
-                sumargs += [curr]
-                prev = '{0}*(1-{1}_norm)'.format(prev,pdf) if prev else '(1-{0}_norm)'.format(pdf)
+            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs[:-1]] + [pdfs[-1]]
+            ws.factory("RSUM::{0}({1})".format(label, ', '.join(sumargs)))
         elif self.doExtended:
             sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs]
+            ws.factory("sum::{0}({1})".format(label, ', '.join(sumargs)))
         else: # Don't do this if you have more than 2 pdfs ...
-            if len(pdfs)>2: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
-            sumargs = ['{0}'.format(pdf) if len(pdfs)==n+1 else '{0}_norm*{0}'.format(pdf) for n,pdf in enumerate(pdfs)]
-        ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))
+            if len(sumpdfs)>1: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
+            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in sumpdfs] + ['{0}'.format(pdf) for pdf in pdfs if pdf not in sumpdfs]
+            ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))
         self.params = ['{}_norm'.format(pdf) for pdf in pdfs]
+
+class Prod(Model):
+
+    def __init__(self,name,*args,**kwargs):
+        super(Prod,self).__init__(name,**kwargs)
+        self.args = args
+
+    def build(self,ws,label):
+        ws.factory("PROD::{0}({1})".format(label, ', '.join(self.args)))
+        self.params = []
