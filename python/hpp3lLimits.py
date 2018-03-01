@@ -47,9 +47,9 @@ for s in samples + ['data']:
     datadrivenSamples += sigMap[s]
 
 counters = {}
-#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
-shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn','JetEn']
-#shiftTypes = ['lep','trig','pu','fake','ElectronEn','MuonEn','TauEn']
+#shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
+shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn']
+#shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn']
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']

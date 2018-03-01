@@ -129,16 +129,16 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl,doAl
             #(ddproc, ('all',), ('all',), ('all',)): 1.1,
             (ddproc, ('all',), ('all',), tuple(catI3l   + [c+'_SB' for c in catI3l]))   : 1.05,
             (ddproc, ('all',), ('all',), tuple(catII3l  + [c+'_SB' for c in catII3l]))  : 1.15,
-            (ddproc, ('all',), ('all',), tuple(catIII3l + [c+'_SB' for c in catIII3l])) : 1.20,
-            (ddproc, ('all',), ('all',), tuple(catIV3l  + [c+'_SB' for c in catIV3l]))  : 1.10,
-            (ddproc, ('all',), ('all',), tuple(catV3l   + [c+'_SB' for c in catV3l]))   : 1.10,
-            (ddproc, ('all',), ('all',), tuple(catVI3l  + [c+'_SB' for c in catVI3l]))  : 1.10,
+            (ddproc, ('all',), ('all',), tuple(catIII3l + [c+'_SB' for c in catIII3l])) : 1.15,
+            (ddproc, ('all',), ('all',), tuple(catIV3l  + [c+'_SB' for c in catIV3l]))  : 1.15,
+            (ddproc, ('all',), ('all',), tuple(catV3l   + [c+'_SB' for c in catV3l]))   : 1.20,
+            (ddproc, ('all',), ('all',), tuple(catVI3l  + [c+'_SB' for c in catVI3l]))  : 1.20,
             (ddproc, ('all',), ('all',), tuple(catI4l   + [c+'_SB' for c in catI4l]))   : 1.05,
             (ddproc, ('all',), ('all',), tuple(catII4l  + [c+'_SB' for c in catII4l]))  : 1.15,
             (ddproc, ('all',), ('all',), tuple(catIII4l + [c+'_SB' for c in catIII4l])) : 1.15,
-            (ddproc, ('all',), ('all',), tuple(catIV4l  + [c+'_SB' for c in catIV4l]))  : 1.20,
-            (ddproc, ('all',), ('all',), tuple(catV4l   + [c+'_SB' for c in catV4l]))   : 1.10,
-            (ddproc, ('all',), ('all',), tuple(catVI4l  + [c+'_SB' for c in catVI4l]))  : 1.10,
+            (ddproc, ('all',), ('all',), tuple(catIV4l  + [c+'_SB' for c in catIV4l]))  : 1.15,
+            (ddproc, ('all',), ('all',), tuple(catV4l   + [c+'_SB' for c in catV4l]))   : 1.20,
+            (ddproc, ('all',), ('all',), tuple(catVI4l  + [c+'_SB' for c in catVI4l]))  : 1.20,
         }
         if ddproc: limits.addSystematic('alpha_unc','lnN',systematics=ddsyst)
 
