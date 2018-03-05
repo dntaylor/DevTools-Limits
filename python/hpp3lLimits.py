@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%
 
 blind = False
 doShifts = True
-readUncerr = False # read from file rather than compute on the fly
+readUncerr = True # read from file rather than compute on the fly
 
 # define cards to create
 modes = ['ee100','em100','et100','mm100','mt100','tt100','BP1','BP2','BP3','BP4']
@@ -46,6 +46,13 @@ datadrivenSamples = []
 for s in samples + ['data']:
     datadrivenSamples += sigMap[s]
 
+xsecUncertainties = {
+    'ZZ': 0.032, # measured stat, theo: 2.5% 
+    'WZ': 0.080, # measured stat, theo: 2.2%
+    'TTV': 0.15, # theo, same as WZ ref
+    'VVV': 0.06, # theo, same as WZ ref
+}
+
 counters = {}
 #shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
 shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn']
@@ -57,37 +64,42 @@ if not doShifts:
     shifts = ['']
     shiftTypes = []
 
-def getCount(counters,sig,directory,shift=''):
+def getCount(counters,sig,directory,shift='',scale=1):
     tot, totErr = counters[sig+shift].getCount(sig,directory)
-    return (tot,totErr)
+    return (tot*scale,totErr*scale)
 
-def getBackgroundCount(counters,directory,datadriven=False,shift=''):
+def getBackgroundCount(counters,directory,datadriven=False,shift='',**scales):
     tot = 0
     totErr2 = 0
+    vals = []
     if datadriven:
         dirdirs = directory.split('/')
         for s in samples:
-            val,err = getCount(counters,s,'/'.join(['3P0F']+dirdirs),shift=shift)
+            val,err = getCount(counters,s,'/'.join(['3P0F']+dirdirs),shift=shift,scale=scales.get(s,1))
+            vals += [(s,val,err)]
             tot += val
             totErr2 += err**2
         for s in samples+['data']:
             for reg in ['2P1F','1P2F','0P3F']:
-                val,err = getCount(counters,s,'/'.join([reg]+dirdirs),shift=shift)
+                val,err = getCount(counters,s,'/'.join([reg]+dirdirs),shift=shift,scale=scales.get(s,1))
+                vals += [(s,reg,val,err)]
                 tot += val
                 totErr2 += err**2
     else:
         for s in allsamples:
-            val,err = getCount(counters,s,directory,shift=shift)
+            val,err = getCount(counters,s,directory,shift=shift,scale=scales.get(s,1))
+            vals += [(s,val,err)]
             tot += val
             totErr2 += err**2
+    #if not tot: print directory, vals
     return (tot,totErr2**0.5)
 
-def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
-    #mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    #mc_mw         = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_mw          = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_allmw       = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    #mc_all        = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
+    #mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    #mc_mw         = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    mc_mw          = getBackgroundCount(counters,'new/massWindow/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    mc_allmw       = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    #mc_all        = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
     alpha         = divWithError(mc_allmw,mc_mw)
     if abs(alpha[0]) < abs(alpha[1]): alpha = (alpha[1], alpha[1])
     if alphaOnly: return abs(alpha[0])
@@ -98,9 +110,9 @@ def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
     #return (abs(data_exp[0]),abs(data_allside[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
     return (abs(data_exp[0]),abs(data_mw[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
 
-def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
-    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
+def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
+    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
     alpha         = divWithError(mc_allSide,mc_side)
     if abs(alpha[0]) < abs(alpha[1]): alpha = (alpha[1], alpha[1])
     if alphaOnly: return abs(alpha[0])
@@ -109,12 +121,14 @@ def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
     return (abs(data_exp[0]),abs(data_side[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
 
-def getDualAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=''):
-    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift)
-    mc_allmw      = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift)
+def getDualAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
+    mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    mc_allSide    = getBackgroundCount(counters,'new/allSideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
+    mc_allmw      = getBackgroundCount(counters,'new/allMassWindow/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
     alphaSR       = divWithError(mc_allmw,mc_side)
     alphaSB       = divWithError(mc_allSide,mc_side)
+    #if not alphaSR[0]: print 'SR', alphaSR, mc_allmw, mc_side
+    #if not alphaSB[0]: print 'SB', alphaSB, mc_allSide, mc_side
     if abs(alphaSR[0]) < abs(alphaSR[1]): alphaSR = (alphaSR[1], alphaSR[1])
     if abs(alphaSB[0]) < abs(alphaSB[1]): alphaSB = (alphaSB[1], alphaSB[1])
     if alphaOnly: return (abs(alphaSR[0]),abs(alphaSB[0]))
@@ -279,7 +293,7 @@ for mode in modes:
 
         # set values and stat error
         staterr = {}
-        uncerr = {x:{} for x in shiftTypes}
+        uncerr = {x:{} for x in shiftTypes+xsecUncertainties.keys()}
         uncerr_store = {x:{} for x in shiftTypes}
         era = 'Era13TeV2016'
         analysis = 'Hpp3l'
@@ -297,6 +311,8 @@ for mode in modes:
             if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
                 # dual alpha
                 valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True)#reco.count('t')>=2 or reco[-1]=='t')
+                if not valueSR or not valueSB:
+                    print mode,mass,reco,valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB
                 limits.setExpected('datadriven',era,analysis,reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'AP',reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'PP',reco,valueSR)
@@ -339,6 +355,24 @@ for mode in modes:
                         if err and alphaSB:
                             uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,))] = min([1+err/alphaSB,2])
                             uncerr_store[unc]['datadriven_{0}'.format(recoSB)] = err/alphaSB
+                # get xsec uncertainties
+                for unc in xsecUncertainties:
+                    valueSRUp, valueSBUp = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True,**{unc:1+xsecUncertainties[unc]})[:2]
+                    valueSRDown, valueSBDown = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True,**{unc:1-xsecUncertainties[unc]})[:2]
+                    
+                    if valueSR:
+                        errSRUp = (valueSRUp-valueSR)/valueSR
+                        errSRDown = (valueSR-valueSRDown)/valueSR
+                        errSR = (abs(errSRUp)+abs(errSRDown))/2
+                        #print unc, xsecUncertainties[unc], valueSR, valueSRUp, errSRUp, errSRDown, errSR
+                        uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(reco,))] = 1+errSR
+
+                    if valueSB:
+                        errSBUp = (valueSBUp-valueSB)/valueSB
+                        errSBDown = (valueSB-valueSBDown)/valueSB
+                        errSB = (abs(errSBUp)+abs(errSBDown))/2
+                        uncerr[unc][(('datadriven',),(era,),(analysis,analysis+'AP',analysis+'PP',analysis+'PPR',),(recoSB,))] = 1+errSB
+
 
             else:
                 for proc in backgrounds:
