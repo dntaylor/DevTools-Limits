@@ -54,9 +54,9 @@ class LimitsTex:
 \\begin{{table}}[!htp]
     \\centering
     \\topcaption{{Observed 95\\% CL limits for associated (AP), pair (PP), and right-handed pair production ($\\rm{{PP_{{R}}}}$), as well as the AP and PP combined limit.}}
-    \\begin{{tabular}}{{| c | c | c | c | c |}}
+    \\begin{{tabular}}{{| c | ccc | c |}}
         \\hline
-        Benchmark & AP [GeV] & PP [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] & Combined [GeV] \\\\ \\hline
+        Benchmark & AP [GeV] & PP [GeV] & Combined [GeV] & $\\rm{{PP_{{R}}}}$ [GeV] \\\\ \\hline
 {rows}
         \\hline
     \\end{{tabular}}
@@ -81,7 +81,7 @@ class LimitsTex:
 
 
     rowPAS = '''
-        {tex:40} & {HppAP} ({HppAPExp}) & {HppPP} ({HppPPExp}) & {HppPPR} ({HppPPRExp}) & {HppComb} ({HppCombExp}) \\\\'''
+        {tex:40} & {HppAP} ({HppAPExp}) & {HppPP} ({HppPPExp}) & {HppComb} ({HppCombExp}) & {HppPPR} ({HppPPRExp}) \\\\'''
 
     row = '''
         {tex:40} & {HppAP} & {HppPP} & {HppPPR} & {HppComb} \\\\'''
