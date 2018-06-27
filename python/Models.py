@@ -5,7 +5,7 @@ from array import array
 import ROOT
 
 
-from CombineLimits.Limits.utilities import *
+from utilities import *
 
 class Model(object):
 
