@@ -24,6 +24,7 @@ class Limits(object):
         self.groups = {}      # groups of systematics
         self.signals = []
         self.backgrounds = []
+        self.models = {}      # models to add
         self.expected = {}    # expected yield, one per process/era/analysis/chanel combination
         self.systematics = {} # systematic uncertainties
         self.name = name
@@ -55,8 +56,16 @@ class Limits(object):
     def addMH(self,mhMin,mhMax):
         self.workspace.factory('MH[{0}, {1}]'.format(mhMin,mhMax))
 
-    def addX(self, xMin, xMax):
+    def addX(self, xMin, xMax, unit='', label=''):
         self.workspace.factory('x[{0}, {1}]'.format(xMin,xMax))
+        if unit: self.workspace.var('x').setUnit(unit)
+        if label: self.workspace.var('x').setPlotLabel(label)
+        if label: self.workspace.var('x').SetTitle(label)
+
+    def addModel(self,model,label):
+        if label in self.models: return
+        self.models[label] = model
+        self.models[label].build(self.workspace,label)
 
     def __check(self,test,stored,name='Object'):
         goodToAdd = True
@@ -377,6 +386,7 @@ class Limits(object):
         processNames = ['process','']+['']*totalColumns
         processNumbers = ['process','']+['']*totalColumns
         rates = ['rate','']+['']*totalColumns
+        norms = []
         colpos = 1
         for era in eras:
             for analysis in analyses:
@@ -401,17 +411,17 @@ class Limits(object):
                                 exp = exp.Integral()
                         elif isinstance(exp,Model):
                             exp.build(self.workspace,label)
-                            #x = self.workspace.var('x')
-                            #argset = ROOT.RooArgSet(x)
-                            #pdf = self.workspace.pdf(label)
-                            #exp = pdf.getVal(argset)
-                            #exp = pdf.createIntegral(argset).getVal()
                             if isinstance(exp,ModelSpline):
                                 exp = exp.getIntegral(self.workspace)
                             else:
                                 exp = exp.getIntegral()
-                        else:
+                            norms += [['{}_norm'.format(label),'rateParam',binsForRates[colpos],process,'1']]
+                        elif isinstance(exp,numbers.Number):
                             logging.debug('{0}: {1}'.format(label,exp))
+                        else:
+                            logging.error('Failed to understand: {} {} {} {}'.format(era,analysis,channel,process))
+                            print exp
+                            raise
                         # TODO: unbinned handling
                         rates[colpos] = '{0:<10.4g}'.format(exp)
 
@@ -432,66 +442,71 @@ class Limits(object):
         combinedSysts = self.__combineSystematics(*[systs[key] for key in systs])
         logging.debug('Systs to add: {0}'.format([str(x) for x in sorted(combinedSysts.keys())]))
         systRows = []
+        paramRows = []
         for syst in sorted(combinedSysts.keys()):
-            thisRow = [syst,combinedSysts[syst]['mode']]
-            for era in eras:
-                for analysis in analyses:
-                    for channel in channels:
-                        for process in processesOrdered:
-                            key = (era,analysis,channel,process)
-                            s = '-'
-                            if key in combinedSysts[syst]['systs']:
-                                s = combinedSysts[syst]['systs'][key]
-                                if s==1:
-                                    s = '-'
-                                elif isinstance(s,ROOT.TH1):
-                                    label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                    s.SetName(label)
-                                    s.SetTitle(label)
-                                    shapes += [s]
-                                    if saveWorkspace:
-                                        datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), s)
-                                        self.__wsimport(datahist)
-                                    s = '1'
-                                elif isinstance(s,Model):
-                                    label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                    s.build(self.workspace,label)
-                                    s = '1'
-                                elif (isinstance(s,tuple) or isinstance(s,list)) and len(s)==2:
-                                    if isinstance(s[0],ROOT.TH1):
-                                        label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                        label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                        s[0].SetName(label_up)
-                                        s[0].SetTitle(label_up)
-                                        s[1].SetName(label_down)
-                                        s[1].SetTitle(label_down)
-                                        shapes += s
+            if combinedSysts[syst]['mode'] in ['param','flatParam']:
+                # TODO: implement param uncertainties
+                pass
+            else:
+                thisRow = [syst,combinedSysts[syst]['mode']]
+                for era in eras:
+                    for analysis in analyses:
+                        for channel in channels:
+                            for process in processesOrdered:
+                                key = (era,analysis,channel,process)
+                                s = '-'
+                                if key in combinedSysts[syst]['systs']:
+                                    s = combinedSysts[syst]['systs'][key]
+                                    if s==1:
+                                        s = '-'
+                                    elif isinstance(s,ROOT.TH1):
+                                        label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        s.SetName(label)
+                                        s.SetTitle(label)
+                                        shapes += [s]
                                         if saveWorkspace:
-                                            datahist_up = ROOT.RooDataHist(label_up, label_up, ROOT.RooArgList(self.workspace.var("x")), s[0])
-                                            datahist_down = ROOT.RooDataHist(label_down, label_down, ROOT.RooArgList(self.workspace.var("x")), s[1])
-                                            self.__wsimport(datahist_up)
-                                            self.__wsimport(datahist_down)
+                                            datahist = ROOT.RooDataHist(label, label, ROOT.RooArgList(self.workspace.var("x")), s)
+                                            self.__wsimport(datahist)
                                         s = '1'
-                                    elif isinstance(s[0],Model):
-                                        label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                        label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
-                                        s[0].build(self.workspace,label_up)
-                                        s[1].build(self.workspace,label_down)
+                                    elif isinstance(s,Model):
+                                        label = '{0}_{1}_{2}'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                        s.build(self.workspace,label)
                                         s = '1'
-                                    elif isinstance(s[0],numbers.Number):
-                                        s = '{0:>4.4g}/{1:<4.4g}'.format(*s)
-                                    else:
-                                        logging.error('Do not know how to handle {0}'.format(s))
-                                        raise
-                                elif isinstance(s,numbers.Number):
-                                    s = '{0:<10.4g}'.format(s)
-                            thisRow += [s]
-            systRows += [thisRow]
+                                    elif (isinstance(s,tuple) or isinstance(s,list)) and len(s)==2:
+                                        if isinstance(s[0],ROOT.TH1):
+                                            label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                            label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                            s[0].SetName(label_up)
+                                            s[0].SetTitle(label_up)
+                                            s[1].SetName(label_down)
+                                            s[1].SetTitle(label_down)
+                                            shapes += s
+                                            if saveWorkspace:
+                                                datahist_up = ROOT.RooDataHist(label_up, label_up, ROOT.RooArgList(self.workspace.var("x")), s[0])
+                                                datahist_down = ROOT.RooDataHist(label_down, label_down, ROOT.RooArgList(self.workspace.var("x")), s[1])
+                                                self.__wsimport(datahist_up)
+                                                self.__wsimport(datahist_down)
+                                            s = '1'
+                                        elif isinstance(s[0],Model):
+                                            label_up = '{0}_{1}_{2}Up'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                            label_down = '{0}_{1}_{2}Down'.format(process,binName.format(era=era,analysis=analysis,channel=channel),syst)
+                                            s[0].build(self.workspace,label_up)
+                                            s[1].build(self.workspace,label_down)
+                                            s = '1'
+                                        elif isinstance(s[0],numbers.Number):
+                                            s = '{0:>4.4g}/{1:<4.4g}'.format(*s)
+                                        else:
+                                            logging.error('Do not know how to handle {0}'.format(s))
+                                            raise
+                                    elif isinstance(s,numbers.Number):
+                                        s = '{0:<10.4g}'.format(s)
+                                thisRow += [s]
+                systRows += [thisRow]
 
         kmax = len(systRows)
 
-        logging.info('Writing {0}{1}.txt'.format(filename,suffix))
         # now write to file
+        logging.info('Writing {0}{1}.txt'.format(filename,suffix))
         with open(filename+suffix+'.txt','w') as f:
             lineWidth = 80
             firstWidth = 40
@@ -499,6 +514,15 @@ class Limits(object):
             def getline(row):
                 try:
                     return '{0} {1}\n'.format(row[0][:firstWidth]+' '*max(0,firstWidth-len(row[0])), ''.join([r[:restWidth]+' '*max(0,restWidth-len(r)) for r in row[1:]]))
+                except:
+                    print row
+                    e = sys.exc_info()[0]
+                    print e
+                    raise
+
+            def getparamline(row):
+                try:
+                    return ' '.join([str(x) for x in row])+'\n'
                 except:
                     print row
                     e = sys.exc_info()[0]
@@ -541,6 +565,11 @@ class Limits(object):
                 logging.debug('Systematic row: {0}'.format([str(x) for x in systRow]))
                 f.write(getline(systRow))
             f.write('-'*lineWidth+'\n')
+
+            # rateParams
+            for norm in norms:
+                logging.debug('Rate param: {0}'.format([str(x) for x in norm]))
+                f.write(getparamline(norm))
 
             # nuissance categories
             for group in self.groups:

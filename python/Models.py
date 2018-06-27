@@ -5,6 +5,7 @@ from array import array
 import ROOT
 
 
+from CombineLimits.Limits.utilities import *
 
 class Model(object):
 
@@ -21,32 +22,107 @@ class Model(object):
 
     def build(self,ws,label):
         '''Dummy method to add model to workspace'''
-        pass
+        logging.debug('Building {}'.format(label))
 
-    def fit(self,ws,hist,name,save=False):
+    def fit(self,ws,hist,name,save=False,doErrors=False,saveDir=''):
         '''Fit the model to a histogram and return the fit values'''
+
         if isinstance(hist,ROOT.TH1):
             dhname = 'dh_{0}'.format(name)
             hist = ROOT.RooDataHist(dhname, dhname, ROOT.RooArgList(ws.var(self.x)), hist)
         self.build(ws,name)
         model = ws.pdf(name)
-        fr = model.fitTo(hist,ROOT.RooFit.Save())
+        fr = model.fitTo(hist,ROOT.RooFit.Save(),ROOT.RooFit.SumW2Error(True))
         pars = fr.floatParsFinal()
         vals = {}
+        errs = {}
         for p in range(pars.getSize()):
             vals[pars.at(p).GetName()] = pars.at(p).getValV()
+            errs[pars.at(p).GetName()] = pars.at(p).getError()
 
         if save:
-            savename = '{0}_{1}'.format(self.name,name)
+            if saveDir: python_mkdir(saveDir)
+            savename = '{}/{}_{}'.format(saveDir,self.name,name) if saveDir else '{}_{}'.format(self.name,name)
             x = ws.var(self.x)
             xFrame = x.frame()
+            xFrame.SetTitle('')
             hist.plotOn(xFrame)
             model.plotOn(xFrame)
-            model.paramOn(xFrame)
+            model.paramOn(xFrame,ROOT.RooFit.Layout(0.72,0.98,0.90))
             canvas = ROOT.TCanvas(savename,savename,800,800)
+            canvas.SetRightMargin(0.3)
             xFrame.Draw()
+            prims = canvas.GetListOfPrimitives()
+            for prim in prims:
+                if 'paramBox' in prim.GetName():
+                    prim.SetTextSize(0.02)
             canvas.Print('{0}.png'.format(savename))
 
+        if doErrors:
+            return vals, errs
+        return vals
+
+    def fit2D(self,ws,hist,name,save=False,doErrors=False,saveDir=''):
+        '''Fit the model to a histogram and return the fit values'''
+
+        if isinstance(hist,ROOT.TH1):
+            dhname = 'dh_{0}'.format(name)
+            hist = ROOT.RooDataHist(dhname, dhname, ROOT.RooArgList(ws.var(self.x),ws.var(self.y)), hist)
+        self.build(ws,name)
+        model = ws.pdf(name)
+        fr = model.fitTo(hist,ROOT.RooFit.Save(),ROOT.RooFit.SumW2Error(True))
+        pars = fr.floatParsFinal()
+        vals = {}
+        errs = {}
+        for p in range(pars.getSize()):
+            vals[pars.at(p).GetName()] = pars.at(p).getValV()
+            errs[pars.at(p).GetName()] = pars.at(p).getError()
+
+        if save:
+            if saveDir: python_mkdir(saveDir)
+            savename = '{}/{}_{}'.format(saveDir,self.name,name) if saveDir else '{}_{}'.format(self.name,name)
+            x = ws.var(self.x)
+            xFrame = x.frame()
+            xFrame.SetTitle('')
+            hist.plotOn(xFrame)
+            model.plotOn(xFrame)
+            model.paramOn(xFrame,ROOT.RooFit.Layout(0.72,0.98,0.90))
+            canvas = ROOT.TCanvas(savename,savename,800,800)
+            canvas.SetRightMargin(0.3)
+            xFrame.Draw()
+            prims = canvas.GetListOfPrimitives()
+            for prim in prims:
+                if 'paramBox' in prim.GetName():
+                    prim.SetTextSize(0.02)
+            canvas.Print('{0}_xproj.png'.format(savename))
+
+            y = ws.var(self.y)
+            yFrame = y.frame()
+            yFrame.SetTitle('')
+            hist.plotOn(yFrame)
+            model.plotOn(yFrame)
+            model.paramOn(yFrame,ROOT.RooFit.Layout(0.72,0.98,0.90))
+            yFrame.Draw()
+            prims = canvas.GetListOfPrimitives()
+            for prim in prims:
+                if 'paramBox' in prim.GetName():
+                    prim.SetTextSize(0.02)
+            canvas.Print('{0}_yproj.png'.format(savename))
+
+            histM = model.createHistogram('x,y',100,100)
+            histM.SetLineColor(ROOT.kBlue)
+            histM.Draw('surf')
+            canvas.Print('{0}_model.png'.format(savename))
+
+            if isinstance(hist,ROOT.RooDataSet):
+                histD = hist.createHistogram(x,y,20,20,'1','{}_hist'.format(savename))
+                histD.SetLineColor(ROOT.kBlack)
+                histD.Draw('surf')
+                canvas.Print('{0}_dataset.png'.format(savename))
+
+
+        if doErrors:
+            return vals, errs
         return vals
 
     def setIntegral(self,integral):
@@ -66,14 +142,11 @@ class ModelSpline(Model):
         self.masses = masses
         self.integrals = integrals
 
-    def getIntegral(self,ws):
-        if not hasattr(self,'integrals'): return 1
-        integralName = '{0}_norm'.format(self.name) # TODO, better name
-        integralSpline  = ROOT.RooSpline1D(integralName,  integralName,  ws.var(self.MH), len(self.masses), array('d',self.masses), array('d',self.integrals))
+    def buildIntegral(self,ws,label):
+        if not hasattr(self,'integrals'): return 
+        integralSpline  = ROOT.RooSpline1D(label,  label,  ws.var(self.MH), len(self.masses), array('d',self.masses), array('d',self.integrals))
         # import to workspace
         getattr(ws, "import")(integralSpline, ROOT.RooFit.RecycleConflictNodes())
-        # return name
-        return 1
 
 class SplineParam(object):
 
@@ -82,6 +155,7 @@ class SplineParam(object):
         self.kwargs = kwargs
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         paramName = '{0}'.format(label) 
         ws.factory('{0}[0,-10,10]'.format(paramName))
 
@@ -93,6 +167,7 @@ class Spline(object):
         self.kwargs = kwargs
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         masses = self.kwargs.get('masses', [])
         values = self.kwargs.get('values', [])
         shifts = self.kwargs.get('shifts', {})
@@ -117,12 +192,46 @@ class Spline(object):
             spline = ROOT.RooSpline1D(splineName,  splineName,  ws.var(self.mh), len(masses), array('d',masses), array('d',values))
         getattr(ws, "import")(spline, ROOT.RooFit.RecycleConflictNodes())
 
+class Polynomial(Model):
+
+    def __init__(self,name,**kwargs):
+        super(Chebychev,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
+        order = self.kwargs.get('order',1)
+        params = ['p{}_{}'.format(o,label) for o in range(order)]
+        ranges = [self.kwargs.get('p{}'.format(o),[0,-1,1]) for o in range(order)]
+        ws.factory('Polynomial::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[{}]'.format(p,','.join([str(r) for r in rs])) for p,rs in zip(params,ranges)])))
+        self.params = params
+
+class PolynomialSpline(ModelSpline):
+
+    def __init__(self,name,**kwargs):
+        super(ChebychevSpline,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
+        order = self.kwargs.get('order',1)
+        masses = self.kwargs.get('masses',[])
+        paramSplines = {}
+        params = []
+        for o in range(order):
+            ps = self.kwargs.get('p{}'.format(o), [])
+            paramName = 'p{}_{}'.format(o,label)
+            paramSplines[o] = ROOT.RooSpline1D(paramName, paramName, ws.var('MH'), len(masses), array('d',masses), array('d',ps))
+            getattr(ws, "import")(paramSplines[o], ROOT.RooFit.RecycleConflictNodes())
+            params += [paramName]
+        ws.factory('Polynomial::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[0, -10, 10]'.format(p) for p in params])))
+        self.params = params
+
 class Chebychev(Model):
 
     def __init__(self,name,**kwargs):
         super(Chebychev,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         order = self.kwargs.get('order',1)
         params = ['p{}_{}'.format(o,label) for o in range(order)]
         ranges = [self.kwargs.get('p{}'.format(o),[0,-1,1]) for o in range(order)]
@@ -135,6 +244,7 @@ class ChebychevSpline(ModelSpline):
         super(ChebychevSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         order = self.kwargs.get('order',1)
         masses = self.kwargs.get('masses',[])
         paramSplines = {}
@@ -154,6 +264,7 @@ class Gaussian(Model):
         super(Gaussian,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
         mean = self.kwargs.get('mean',[1,0,1000])
@@ -171,6 +282,7 @@ class GaussianSpline(ModelSpline):
         super(GaussianSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
         masses = self.kwargs.get('masses', [])
@@ -192,6 +304,7 @@ class BreitWigner(Model):
         super(BreitWigner,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         widthName = 'width_{0}'.format(label)
         mean  = self.kwargs.get('mean',  [1,0,1000])
@@ -209,6 +322,7 @@ class BreitWignerSpline(ModelSpline):
         super(BreitWignerSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         widthName = 'width_{0}'.format(label)
         masses = self.kwargs.get('masses', [])
@@ -230,6 +344,7 @@ class Voigtian(Model):
         super(Voigtian,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         widthName = 'width_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
@@ -250,6 +365,7 @@ class VoigtianSpline(ModelSpline):
         super(VoigtianSpline,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         meanName = 'mean_{0}'.format(label)
         widthName = 'width_{0}'.format(label)
         sigmaName = 'sigma_{0}'.format(label)
@@ -275,6 +391,7 @@ class Exponential(Model):
         super(Exponential,self).__init__(name,**kwargs)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         lambdaName = 'lambda_{0}'.format(label)
         lamb = self.kwargs.get('lamb',  [-1,-5,0])
         # variables
@@ -282,6 +399,27 @@ class Exponential(Model):
         # build model
         ws.factory("Exponential::{0}({1}, {2})".format(label,self.x,lambdaName))
         self.params = [lambdaName]
+
+class Erf(Model):
+
+    def __init__(self,name,**kwargs):
+        super(Erf,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
+        erfScaleName = 'erfScale_{0}'.format(label)
+        erfShiftName = 'erfShift_{0}'.format(label)
+        erfScale = self.kwargs.get('erfScale', [1,0,10])
+        erfShift = self.kwargs.get('erfShift', [0,0,100])
+        # variables
+        ws.factory('{0}[{1}, {2}, {3}]'.format(erfScaleName,*erfScale))
+        ws.factory('{0}[{1}, {2}, {3}]'.format(erfShiftName,*erfShift))
+        # build model
+        ws.factory("EXPR::{0}('0.5*(TMath::Erf({2}*({1}-{3}))+1)', {1}, {2}, {3})".format(
+            label,self.x,erfScaleName,erfShiftName)
+        )
+        self.params = [erfScaleName,erfShiftName]
+
 
 class Sum(Model):
 
@@ -292,31 +430,35 @@ class Sum(Model):
 
     #def recurse(self,curr,remaining):
     #    if len(remaining):
-    #        return '{0}_norm*{0} + (1-{0}_norm)*({2})'.format(curr,self.recurse(remaining[0],remaining[1:]))
+    #        return '{0}_frac*{0} + (1-{0}_frac)*({2})'.format(curr,self.recurse(remaining[0],remaining[1:]))
     #    else:
-    #        return '{0}_norm*{0}'.format(curr)
+    #        return '{0}_frac*{0}'.format(curr)
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         pdfs = []
         sumpdfs = []
-        for n, (pdf, r) in enumerate(self.kwargs.iteritems()):
-            if r:
-                ws.factory('{0}_norm[{1},{2}]'.format(pdf,*r))
+        for n, (pdf, r) in enumerate(sorted(self.kwargs.iteritems())):
+            if len(r)==2:
+                ws.factory('{0}_frac[{1},{2}]'.format(pdf,*r))
+                sumpdfs += [pdf]
+            elif len(r)==3:
+                ws.factory('{0}_frac[{1},{2},{3}]'.format(pdf,*r))
                 sumpdfs += [pdf]
             pdfs += [pdf]
         pdf = sorted(pdfs)
         # build model
         if self.doRecursive:
-            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs[:-1]] + [pdfs[-1]]
+            sumargs = ['{0}_frac*{0}'.format(pdf) for pdf in pdfs[:-1]] + [pdfs[-1]]
             ws.factory("RSUM::{0}({1})".format(label, ', '.join(sumargs)))
         elif self.doExtended:
-            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in pdfs]
-            ws.factory("sum::{0}({1})".format(label, ', '.join(sumargs)))
+            sumargs = ['{0}_frac*{0}'.format(pdf) for pdf in pdfs]
+            ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))
         else: # Don't do this if you have more than 2 pdfs ...
             if len(sumpdfs)>1: logging.warning('This sum is not guaranteed to be positive because there are more than two arguments. Better to use the option recursive=True.')
-            sumargs = ['{0}_norm*{0}'.format(pdf) for pdf in sumpdfs] + ['{0}'.format(pdf) for pdf in pdfs if pdf not in sumpdfs]
+            sumargs = ['{0}_frac*{0}'.format(pdf) for pdf in sumpdfs[:-1]] + [sumpdfs[-1]]
             ws.factory("SUM::{0}({1})".format(label, ', '.join(sumargs)))
-        self.params = ['{}_norm'.format(pdf) for pdf in pdfs]
+        self.params = ['{}_frac'.format(pdf) for pdf in pdfs]
 
 class Prod(Model):
 
@@ -325,5 +467,17 @@ class Prod(Model):
         self.args = args
 
     def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
+        ws.factory("PROD::{0}({1})".format(label, ', '.join(self.args)))
+        self.params = []
+
+class ProdSpline(ModelSpline):
+
+    def __init__(self,name,*args,**kwargs):
+        super(ProdSpline,self).__init__(name,**kwargs)
+        self.args = args
+
+    def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
         ws.factory("PROD::{0}({1})".format(label, ', '.join(self.args)))
         self.params = []
