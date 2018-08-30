@@ -15,7 +15,8 @@ logging.basicConfig(level=logging.INFO, stream=sys.stderr, format='%(asctime)s.%
 
 blind = False
 doShifts = True
-readUncerr = True # read from file rather than compute on the fly
+readUncerr = False # read from file rather than compute on the fly
+doPoisson = False
 
 # define cards to create
 modes = ['ee100','em100','et100','mm100','mt100','tt100','BP1','BP2','BP3','BP4']
@@ -30,6 +31,13 @@ chanLabels = getChannelLabels('Hpp3l')
 genRecoMap = getGenRecoChannelMap('Hpp3l')
 sigMap = getSigMap('Hpp3l')
 sigMapDD = getSigMap('Hpp3l',datadriven=True)
+
+scaleSignal = 1
+#scaleSignal = 0.0001
+
+outdirBase = 'datacards'
+#outdirBase = 'datacardsReduced'
+if doPoisson: outdirBase += 'Poisson'
 
 scales = {}
 for mode in modes:
@@ -54,9 +62,9 @@ xsecUncertainties = {
 }
 
 counters = {}
-#shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
-shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn','JetEn']
-#shiftTypes = ['lep','trig','pu','fake','btag','ElectronEn','MuonEn','TauEn']
+#shiftTypes = ['lep','trig','pu','fake','btag','charge','ElectronEn','MuonEn','TauEn','JetEn','UnclusteredEn']
+shiftTypes = ['lep','trig','pu','fake','btag','charge','ElectronEn','MuonEn','TauEn','JetEn']
+#shiftTypes = ['lep','trig','pu','fake','btag','charge','ElectronEn','MuonEn','TauEn']
 shifts = ['']
 for s in shiftTypes:
     shifts += [s+'Up',s+'Down']
@@ -65,7 +73,13 @@ if not doShifts:
     shiftTypes = []
 
 def getCount(counters,sig,directory,shift='',scale=1):
-    tot, totErr = counters[sig+shift].getCount(sig,directory)
+    if sig=='data':
+        tot, totErr = counters[sig+shift].getCount(sig,directory,poisson=doPoisson)
+    else:
+        tot, totErr = counters[sig+shift].getCount(sig,directory)
+    if sig in signalsAP+signalsPP+signalsPPR:
+        tot = tot*scaleSignal
+        totErr = totErr*scaleSignal
     return (tot*scale,totErr*scale)
 
 def getBackgroundCount(counters,directory,datadriven=False,shift='',**scales):
@@ -92,7 +106,15 @@ def getBackgroundCount(counters,directory,datadriven=False,shift='',**scales):
             tot += val
             totErr2 += err**2
     #if not tot: print directory, vals
+    if tot<0:
+        #logging.warning('Background count negative: {} +- {}'.format(tot,totErr2**0.5))
+        tot = 0
     return (tot,totErr2**0.5)
+
+def zeroNeg(value):
+    if value[0]<0:
+        value = (0, value[1])
+    return value
 
 def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
     #mc_side       = getBackgroundCount(counters,'new/sideband/{0}'.format(directory),datadriven=datadriven,shift=shift,**scales)
@@ -108,6 +130,14 @@ def getAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift='',*
     data_exp      = prodWithError(data_mw,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
     #return (abs(data_exp[0]),abs(data_allside[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
+    if data_mw[0]<0:
+        logging.warning('Mass window negative: {} +- {}'.format(*data_mw))
+        logging.warning(directory)
+        raise
+    if data_exp[0]<0:
+        logging.warning('Alpha predicted negative: {} +- {}'.format(*data_exp))
+        logging.warning(directory)
+        raise
     return (abs(data_exp[0]),abs(data_mw[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
 
 def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
@@ -119,6 +149,14 @@ def getAlphaPrimeCount(counters,directory,datadriven=False,alphaOnly=False,shift
     data_side     = getCount(counters,'data','new/sideband/{0}'.format(directory))
     data_exp      = prodWithError(data_side,alpha)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
+    if data_side[0]<0:
+        logging.warning('Sideband negative: {} +- {}'.format(*data_side))
+        logging.warning(directory)
+        raise
+    if data_exp[0]<0:
+        logging.warning('Alpha sideband predicted negative: {} +- {}'.format(*data_exp))
+        logging.warning(directory)
+        raise
     return (abs(data_exp[0]),abs(data_side[0]),abs(alpha[0]),abs(alpha[1])) # fix for negative alpha
 
 def getDualAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift='',**scales):
@@ -136,6 +174,18 @@ def getDualAlphaCount(counters,directory,datadriven=False,alphaOnly=False,shift=
     dataSR_exp    = prodWithError(data_side,alphaSR)
     dataSB_exp    = prodWithError(data_side,alphaSB)
     # return data_exp, data_sideband, alpha, alpha stat uncertainty
+    if data_side[0]<0:
+        logging.warning('Sideband negative: {} +- {}'.format(*data_side))
+        logging.warning(directory)
+        raise
+    if dataSR_exp[0]<0:
+        logging.warning('Alpha signal region predicted negative: {} +- {}'.format(*dataSR_exp))
+        logging.warning(directory)
+        raise
+    if dataSB_exp[0]<0:
+        logging.warning('Alpha sideband predicted negative: {} +- {}'.format(*dataSB_exp))
+        logging.warning(directory)
+        raise
     return (abs(dataSR_exp[0]),abs(dataSB_exp[0]),abs(data_side[0]),abs(alphaSR[0]),abs(alphaSR[1]),abs(alphaSB[0]),abs(alphaSB[1])) # fix for negative alpha
 
 # TODO, think if this is what we want
@@ -311,8 +361,8 @@ for mode in modes:
             if len(backgrounds)==1 and backgrounds[0] == 'datadriven':
                 # dual alpha
                 valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB = getDualAlphaCount(counters,'{0}/{1}/{2}'.format(mass,hpphm,reco),datadriven=True)#reco.count('t')>=2 or reco[-1]=='t')
-                if not valueSR or not valueSB:
-                    print mode,mass,reco,valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB
+                #if not valueSR or not valueSB:
+                #    print mode,mass,reco,valueSR,valueSB,side,alphaSR,errSR,alphaSB,errSB
                 limits.setExpected('datadriven',era,analysis,reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'AP',reco,valueSR)
                 limits.setExpected('datadriven',era,analysis+'PP',reco,valueSR)
@@ -553,7 +603,7 @@ for mode in modes:
         addUncertainties(limits,staterr,uncerr,recoChans,signalsAP+signalsPP+signalsPPR,backgrounds,3)
 
         # print the datacard
-        directory = 'datacards/{0}/{1}'.format('Hpp3l',mode)
+        directory = '{}/{}/{}'.format(outdirBase,'Hpp3l',mode)
         python_mkdir(directory)
         limits.printCard('{0}/{1}'.format(directory,mass),analyses=['Hpp3l'],processes=signalsAP+signalsPP+backgrounds,blind=blind)
         limits.printCard('{0}/{1}AP'.format(directory,mass),analyses=['Hpp3lAP'],processes=signalsAP+backgrounds,blind=blind)

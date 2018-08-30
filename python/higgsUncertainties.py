@@ -56,7 +56,7 @@ def addUncertainties(limits,staterr,uncerr,recoChans,signals,backgrounds,nl,doAl
     if elecsyst: limits.addSystematic('elec_id','lnN',systematics=elecsyst)
 
     # electron charge misid 4%
-    # TODO update
+    # TODO Now included in other "chargeUp/Down"
     #eleccharge = {}
     #for c in range(nl):
     #    systChans = tuple([chan for chan in recoChans if chan.count('e')==c+1]+[chan+'_SB' for chan in recoChans if chan.count('e')==c+1])

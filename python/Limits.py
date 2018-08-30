@@ -499,6 +499,12 @@ class Limits(object):
                                             logging.error('Do not know how to handle {0}'.format(s))
                                             raise
                                     elif isinstance(s,numbers.Number):
+                                        if s<1 and combinedSysts[syst]['mode']=='lnN':
+                                            logging.error('Systematic less than 1: {} {} {} {} {} {}'.format(syst,era,analysis,channel,process,s))
+                                            s = 1
+                                        elif s<0:
+                                            logging.error('Systematic negative: {} {} {} {} {} {}'.format(syst,era,analysis,channel,process,s))
+                                            s = 0
                                         s = '{0:<10.4g}'.format(s)
                                 thisRow += [s]
                 systRows += [thisRow]
