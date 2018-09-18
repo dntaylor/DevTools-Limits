@@ -99,7 +99,7 @@ def submitLimit(tag,h,amasses,**kwargs):
             f.write('{}\n'.format(ai))
 
     # output dir
-    output_dir = 'srm://cmssrm.hep.wisc.edu:8443/srm/v2/server?SFN=/hdfs/store/user/{}/{}/{}/{}'.format(pwd.getpwuid(os.getuid())[0], jobName, tag, h)
+    output_dir = '/store/user/{}/{}/{}/{}'.format(pwd.getpwuid(os.getuid())[0], jobName, tag, h)
 
     # create bash script
     bash_name = '{}/script.sh'.format(sample_dir)
