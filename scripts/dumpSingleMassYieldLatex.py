@@ -99,18 +99,18 @@ catChans = {
 }
 
 def latex_float(f,e=0):
-    f = '{0:.3g}'.format(f)
-    f = f.split('e')
-    if len(f)==1: 
+    fp = '{0:.3g}'.format(f)
+    fp = fp.split('e')
+    if len(fp)==1: 
         if e:
-            return '${0} \\pm {1:.3f}$'.format(f[0],e)
+            return '${0:.1f} \\pm {1:.1f}$'.format(f,e)
         else:
-            return '${0}$'.format(*f)
-    p = int(f[1])
+            return '${0}$'.format(*fp)
+    p = int(fp[1])
     if e:
-        return '${0} \\pm {1:.3f} \\times 10^{{{2}}}$'.format(f[0],e/(10**p),p)
+        return '${0} \\pm {1:.1f} \\times 10^{{{2}}}$'.format(fp[0],e/(10**p),p)
     else:
-        return '${0} \\times 10^{{{1}}}$'.format(f[0],p)
+        return '${0} \\times 10^{{{1}}}$'.format(fp[0],p)
 
 def add(args, rowargs, chan):
     rowargs['expected'] += chan['expected']
