@@ -44,9 +44,9 @@ def getCommands(**kwargs):
     '''
     combineCommands = [
         'combine -M AsymptoticLimits -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}"',
-        'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}Observed"',
-        'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APriori" -t -1 --expectSignal=1',
-        'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APosteriori" -t -1 --expectSignal=1 --toysFreq',
+        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}Observed"',
+        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APriori" -t -1 --expectSignal=1',
+        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APosteriori" -t -1 --expectSignal=1 --toysFreq',
     ]
 
     return combineCommands
