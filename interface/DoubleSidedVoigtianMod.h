@@ -23,10 +23,10 @@
 #include "RooMinuit.h"
 #include "RooPlot.h"
  
-class DoubleSidedVoigtian : public RooAbsPdf {
+class DoubleSidedVoigtianMod : public RooAbsPdf {
 public:
-  DoubleSidedVoigtian() {} ; 
-  DoubleSidedVoigtian(const char *name, const char *title,
+  DoubleSidedVoigtianMod() {} ; 
+  DoubleSidedVoigtianMod(const char *name, const char *title,
 	      RooAbsReal& _x,
 	      RooAbsReal& _mean,
 	      RooAbsReal& _sig1,
@@ -34,9 +34,9 @@ public:
               RooAbsReal& _wid1,
               RooAbsReal& _wid2,
               Double_t _yMax);
-  DoubleSidedVoigtian(const DoubleSidedVoigtian& other, const char* name=0) ;
-  virtual TObject* clone(const char* newname) const { return new DoubleSidedVoigtian(*this,newname); }
-  inline virtual ~DoubleSidedVoigtian() { }
+  DoubleSidedVoigtianMod(const DoubleSidedVoigtianMod& other, const char* name=0) ;
+  virtual TObject* clone(const char* newname) const { return new DoubleSidedVoigtianMod(*this,newname); }
+  inline virtual ~DoubleSidedVoigtianMod() { }
 
 protected:
 
@@ -51,7 +51,7 @@ protected:
 private:
 
   Double_t yMax;
-  ClassDef(DoubleSidedVoigtian,1) // Your description goes here...
+  ClassDef(DoubleSidedVoigtianMod,1) // Your description goes here...
 };
  
 #endif
