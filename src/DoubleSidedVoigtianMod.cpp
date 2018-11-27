@@ -6,7 +6,7 @@
 
 // Your description goes here... 
 
-#include "DevTools/Limits/interface/DoubleSidedVoigtian.h" 
+#include "DevTools/Limits/interface/DoubleSidedVoigtianMod.h" 
 #include "RooAbsReal.h" 
 #include "RooAbsCategory.h" 
 #include <math.h> 
@@ -15,9 +15,9 @@
 #include "RooMath.h"
 #include "RooVoigtian.h"
 
-ClassImp(DoubleSidedVoigtian) 
+ClassImp(DoubleSidedVoigtianMod) 
 
-DoubleSidedVoigtian::DoubleSidedVoigtian(const char *name, const char *title, 
+DoubleSidedVoigtianMod::DoubleSidedVoigtianMod(const char *name, const char *title, 
                        RooAbsReal& _x,
                        RooAbsReal& _mean,
                        RooAbsReal& _sig1,
@@ -37,7 +37,7 @@ DoubleSidedVoigtian::DoubleSidedVoigtian(const char *name, const char *title,
 } 
 
 
-DoubleSidedVoigtian::DoubleSidedVoigtian(const DoubleSidedVoigtian& other, const char* name) :  
+DoubleSidedVoigtianMod::DoubleSidedVoigtianMod(const DoubleSidedVoigtianMod& other, const char* name) :  
   RooAbsPdf(other,name), 
   x("x",this,other.x),
   mean("mean",this,other.mean),
@@ -51,7 +51,7 @@ DoubleSidedVoigtian::DoubleSidedVoigtian(const DoubleSidedVoigtian& other, const
 
 
 
-Double_t DoubleSidedVoigtian::evaluate() const 
+Double_t DoubleSidedVoigtianMod::evaluate() const 
 { 
   double sqrttwologtwo = TMath::Power( 2*TMath::Log(2), 0.5);
   double gau1_width = sig1*sqrttwologtwo, gau2_width = sig2*sqrttwologtwo;

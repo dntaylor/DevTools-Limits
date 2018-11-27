@@ -13,10 +13,10 @@
 #include "RooAbsReal.h"
 #include "RooAbsCategory.h"
  
-class DoubleCrystalBall : public RooAbsPdf {
+class DoubleCrystalBallMod : public RooAbsPdf {
 public:
-  DoubleCrystalBall() {} ; 
-  DoubleCrystalBall(const char *name, const char *title,
+  DoubleCrystalBallMod() {} ; 
+  DoubleCrystalBallMod(const char *name, const char *title,
 	      RooAbsReal& _x,
 	      RooAbsReal& _mean,
 	      RooAbsReal& _sig,
@@ -24,9 +24,9 @@ public:
 	      RooAbsReal& _n1,
 	      RooAbsReal& _a2,
 	      RooAbsReal& _n2);
-  DoubleCrystalBall(const DoubleCrystalBall& other, const char* name=0) ;
-  virtual TObject* clone(const char* newname) const { return new DoubleCrystalBall(*this,newname); }
-  inline virtual ~DoubleCrystalBall() { }
+  DoubleCrystalBallMod(const DoubleCrystalBallMod& other, const char* name=0) ;
+  virtual TObject* clone(const char* newname) const { return new DoubleCrystalBallMod(*this,newname); }
+  inline virtual ~DoubleCrystalBallMod() { }
 
 protected:
 
@@ -42,7 +42,7 @@ protected:
 
 private:
 
-  ClassDef(DoubleCrystalBall,1) // Your description goes here...
+  ClassDef(DoubleCrystalBallMod,1) // Your description goes here...
 };
  
 #endif

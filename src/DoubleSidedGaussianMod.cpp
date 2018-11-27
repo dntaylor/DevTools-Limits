@@ -6,16 +6,16 @@
 
 // Your description goes here... 
 
-#include "DevTools/Limits/interface/DoubleSidedGaussian.h" 
+#include "DevTools/Limits/interface/DoubleSidedGaussianMod.h" 
 #include "RooAbsReal.h" 
 #include "RooAbsCategory.h" 
 #include <math.h> 
 #include "TMath.h" 
 #include "RooGaussian.h"
 
-ClassImp(DoubleSidedGaussian) 
+ClassImp(DoubleSidedGaussianMod) 
 
-DoubleSidedGaussian::DoubleSidedGaussian(const char *name, const char *title, 
+DoubleSidedGaussianMod::DoubleSidedGaussianMod(const char *name, const char *title, 
                        RooAbsReal& _x,
                        RooAbsReal& _mean,
                        RooAbsReal& _sig1,
@@ -31,7 +31,7 @@ DoubleSidedGaussian::DoubleSidedGaussian(const char *name, const char *title,
 } 
 
 
-DoubleSidedGaussian::DoubleSidedGaussian(const DoubleSidedGaussian& other, const char* name) :  
+DoubleSidedGaussianMod::DoubleSidedGaussianMod(const DoubleSidedGaussianMod& other, const char* name) :  
   RooAbsPdf(other,name), 
   x("x",this,other.x),
   mean("mean",this,other.mean),
@@ -43,7 +43,7 @@ DoubleSidedGaussian::DoubleSidedGaussian(const DoubleSidedGaussian& other, const
 
 
 
-Double_t DoubleSidedGaussian::evaluate() const 
+Double_t DoubleSidedGaussianMod::evaluate() const 
 { 
   double result = -1;
   double sqrt2pi = TMath::Power( 2 * TMath::Pi(), 0.5); 

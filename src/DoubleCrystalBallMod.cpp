@@ -6,15 +6,15 @@
 
 // Your description goes here... 
 
-#include "DevTools/Limits/interface/DoubleCrystalBall.h" 
+#include "DevTools/Limits/interface/DoubleCrystalBallMod.h" 
 #include "RooAbsReal.h" 
 #include "RooAbsCategory.h" 
 #include <math.h> 
 #include "TMath.h" 
 
-ClassImp(DoubleCrystalBall) 
+ClassImp(DoubleCrystalBallMod) 
 
- DoubleCrystalBall::DoubleCrystalBall(const char *name, const char *title, 
+ DoubleCrystalBallMod::DoubleCrystalBallMod(const char *name, const char *title, 
                         RooAbsReal& _x,
                         RooAbsReal& _mean,
                         RooAbsReal& _sig,
@@ -34,7 +34,7 @@ ClassImp(DoubleCrystalBall)
  } 
 
 
- DoubleCrystalBall::DoubleCrystalBall(const DoubleCrystalBall& other, const char* name) :  
+ DoubleCrystalBallMod::DoubleCrystalBallMod(const DoubleCrystalBallMod& other, const char* name) :  
    RooAbsPdf(other,name), 
    x("x",this,other.x),
    mean("mean",this,other.mean),
@@ -48,7 +48,7 @@ ClassImp(DoubleCrystalBall)
 
 
 
-Double_t DoubleCrystalBall::evaluate() const 
+Double_t DoubleCrystalBallMod::evaluate() const 
 { 
 	double u   = (x-mean)/sig;
 	double A1  = TMath::Power(n1/TMath::Abs(a1),n1)*TMath::Exp(-a1*a1/2);

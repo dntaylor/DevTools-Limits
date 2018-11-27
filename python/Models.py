@@ -542,7 +542,7 @@ class DoubleCrystalBall(Model):
         if not isinstance(n2,str): ws.factory('{0}[{1}, {2}, {3}]'.format(n2Name,*n2))
 
         # build model
-        doubleCB = ROOT.DoubleCrystalBall(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigmaName), 
+        doubleCB = ROOT.DoubleCrystalBallMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigmaName), 
                    ws.arg(a1Name), ws.arg(n1Name), ws.arg(a2Name), ws.arg(n2Name) )
         self.wsimport(ws, doubleCB)
         self.params = [meanName,sigmaName,a1Name,n1Name,a2Name,n2Name]
@@ -583,7 +583,7 @@ class DoubleCrystalBallSpline(ModelSpline):
         getattr(ws, "import")(n2Spline, ROOT.RooFit.RecycleConflictNodes())
 
         # build model
-        doubleCB = ROOT.DoubleCrystalBall(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigmaName), 
+        doubleCB = ROOT.DoubleCrystalBallMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigmaName), 
                    ws.arg(a1Name), ws.arg(n1Name), ws.arg(a2Name), ws.arg(n2Name) )
         self.wsimport(ws, doubleCB)
         self.params = [meanName,sigmaName,a1Name,n1Name,a2Name,n2Name]
@@ -609,7 +609,7 @@ class DoubleSidedGaussian(Model):
         if not isinstance(sigma2,str): ws.factory('{0}[{1}, {2}, {3}]'.format(sigma2Name,*sigma2))
 
         # build model
-        doubleG = ROOT.DoubleSidedGaussian(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), yMax )
+        doubleG = ROOT.DoubleSidedGaussianMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), yMax )
         self.wsimport(ws, doubleG)
         self.params = [meanName,sigma1Name,sigma2Name]
 
@@ -638,7 +638,7 @@ class DoubleSidedGaussianSpline(ModelSpline):
         getattr(ws, "import")(sigma2Spline, ROOT.RooFit.RecycleConflictNodes())
 
         # build model
-        doubleG = ROOT.DoubleSidedGaussian(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), yMax )
+        doubleG = ROOT.DoubleSidedGaussianMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), yMax )
         self.wsimport(ws, doubleG)
         self.params = [meanName,sigma1Name,sigma2Name] 
 
@@ -669,7 +669,7 @@ class DoubleSidedVoigtian(Model):
         if not isinstance(width2,str): ws.factory('{0}[{1}, {2}, {3}]'.format(width2Name,*width2))
 
         # build model
-        doubleV = ROOT.DoubleSidedVoigtian(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), ws.arg(width1Name), ws.arg(width2Name), yMax )
+        doubleV = ROOT.DoubleSidedVoigtianMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), ws.arg(width1Name), ws.arg(width2Name), yMax )
         self.wsimport(ws, doubleV)
         self.params = [meanName,sigma1Name,sigma2Name,width1Name,width2Name]
 
@@ -706,7 +706,7 @@ class DoubleSidedVoigtianSpline(ModelSpline):
         getattr(ws, "import")(width2Spline, ROOT.RooFit.RecycleConflictNodes())
 
         # build model
-        doubleV = ROOT.DoubleSidedVoigtian(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), ws.arg(width1Name), ws.arg(width2Name), yMax )
+        doubleV = ROOT.DoubleSidedVoigtianMod(label, label, ws.arg(self.x), ws.arg(meanName), ws.arg(sigma1Name), ws.arg(sigma2Name), ws.arg(width1Name), ws.arg(width2Name), yMax )
         self.wsimport(ws, doubleV)
         self.params = [meanName,sigma1Name,sigma2Name,width1Name,width2Name] 
 
