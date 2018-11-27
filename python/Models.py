@@ -314,6 +314,19 @@ class ChebychevSpline(ModelSpline):
         ws.factory('Chebychev::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[0, -10, 10]'.format(p) for p in params])))
         self.params = params
 
+class Bernstein(Model):
+
+    def __init__(self,name,**kwargs):
+        super(Bernstein,self).__init__(name,**kwargs)
+
+    def build(self,ws,label):
+        logging.debug('Building {}'.format(label))
+        order = self.kwargs.get('order',1)
+        params = ['p{}_{}'.format(o,label) for o in range(order)]
+        ranges = [self.kwargs.get('p{}'.format(o),[0,-1,1]) for o in range(order)]
+        ws.factory('Bernstein::{}({}, {{ {} }})'.format(label, self.x, ', '.join(['{}[{}]'.format(p,','.join([str(r) for r in rs])) for p,rs in zip(params,ranges)])))
+        self.params = params
+
 class Gaussian(Model):
 
     def __init__(self,name,**kwargs):
@@ -326,7 +339,11 @@ class Gaussian(Model):
         meanName  = mean if isinstance(mean,str) else 'mean_{0}'.format(label)
         sigmaName = sigma if isinstance(sigma,str) else 'sigma_{0}'.format(label)
         # variables
-        if not isinstance(mean,str): ws.factory('{0}[{1}, {2}, {3}]'.format(meanName,*mean))
+        if not isinstance(mean,str): 
+            if len(mean)==1:
+                ws.factory('{0}[{1}]'.format(meanName,*mean))
+            else:
+                ws.factory('{0}[{1}, {2}, {3}]'.format(meanName,*mean))
         if not isinstance(sigma,str): ws.factory('{0}[{1}, {2}, {3}]'.format(sigmaName,*sigma))
         # build model
         ws.factory("Gaussian::{0}({1}, {2}, {3})".format(label,self.x,meanName,sigmaName))
