@@ -43,11 +43,16 @@ def getCommands(**kwargs):
     Submit a job using farmoutAnalysisJobs --fwklite
     '''
     combineCommands = [
-        'combine -M AsymptoticLimits -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}"',
-        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}Observed"',
-        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APriori" -t -1 --expectSignal=1',
-        #'combine -M Significance -m {a} {datacard} -n "HToAAH{h}A{a}_{tag}APosteriori" -t -1 --expectSignal=1 --toysFreq',
+        #'combine -M AsymptoticLimits -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -n "HToAAH{h}A{a}_{tag}{postscript}"',
+        #'combine -M AsymptoticLimits -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -v 1 -n "HToAAH{h}A{a}_{tag}{postscript}"', # verbose
+        'combine -M AsymptoticLimits -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -v 2 -n "HToAAH{h}A{a}_{tag}{postscript}"', # very verbose
+        #'combine -M Significance -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -n "HToAAH{h}A{a}_{tag}Observed{postscript}"',
+        #'combine -M Significance -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -n "HToAAH{h}A{a}_{tag}APriori{postscript}" -t -1 --expectSignal=1',
+        #'combine -M Significance -m {h} --setParameters MA={a} --freezeParameters=MA {datacard} -n "HToAAH{h}A{a}_{tag}APosteriori{postscript}" -t -1 --expectSignal=1 --toysFreq',
     ]
+    blind = kwargs.get('blind',True)
+    #for i in range(len(combineCommands)):
+    #    if blind: combineCommands[i] += ' --noFitAsimov'
 
     return combineCommands
 
@@ -55,12 +60,13 @@ def getCommands(**kwargs):
 def runLimit(tag,h,a,**kwargs):
     dryrun = kwargs.get('dryrun',False)
     parametric = kwargs.get('parametric',False)
+    postscript = kwargs.get('postscript','')
 
-    datacard = 'datacards_shape/MuMuTauTau/mmmt_{}_HToAAH{}A{}.txt'.format(tag,h,'X' if parametric else a)
+    datacard = 'datacards_shape/MuMuTauTau/{}_HToAAH{}A{}{}.txt'.format(tag,h,'X' if parametric else a,postscript)
 
     combineCommands = getCommands(**kwargs)
     for cc in combineCommands:
-        command = cc.format(datacard=datacard,h=h,a=a,tag=tag)
+        command = cc.format(datacard=datacard,h=h,a=a,tag=tag,postscript=postscript)
         if dryrun:
             logging.info(command)
         else:
@@ -72,14 +78,15 @@ def submitLimit(tag,h,amasses,**kwargs):
     jobName = kwargs.get('jobName',None)
     pointsPerJob = kwargs.get('pointsPerJob',10)
     parametric = kwargs.get('parametric',False)
+    postscript = kwargs.get('postscript','')
 
     a = '${A}'
 
-    datacard = 'datacards_shape/MuMuTauTau/mmmt_{}_HToAAH{}A{}.txt'.format(tag,h,'X' if parametric else '${A}')
+    datacard = 'datacards_shape/MuMuTauTau/{}_HToAAH{}A{}{}.txt'.format(tag,h,'X' if parametric else '${A}',postscript)
 
     combineCommands = getCommands(**kwargs)
 
-    sample_dir = '/{}/{}/condor_projects/{}/{}/{}'.format(scratchDir, UNAME, jobName, tag, h)
+    sample_dir = '/{}/{}/condor_projects/{}/{}{}/{}'.format(scratchDir, UNAME, jobName, tag, postscript, h)
     python_mkdir(sample_dir)
 
     # create submit dir
@@ -109,7 +116,7 @@ def submitLimit(tag,h,amasses,**kwargs):
     bashScript += 'cp -r $CMSSW_VERSION/src/datacards_shape .\n'
     bashScript += 'while read A; do\n'
     for cc in combineCommands:
-        bashScript += cc.format(datacard=datacard,h=h,a=a,tag=tag)+'\n'
+        bashScript += cc.format(datacard=datacard,h=h,a=a,tag=tag,postscript=postscript)+'\n'
     bashScript += 'done < $INPUT\n'
     with open(bash_name,'w') as file:
         file.write(bashScript)
@@ -133,14 +140,15 @@ def submitLimitCrab(tag,h,amasses,**kwargs):
     jobName = kwargs.get('jobName',None)
     pointsPerJob = kwargs.get('pointsPerJob',10)
     parametric = kwargs.get('parametric',False)
+    postscript = kwargs.get('postscript','')
 
     a = '${A}'
 
-    datacard = 'datacards_shape/MuMuTauTau/mmmt_{}_HToAAH{}A{}.txt'.format(tag,h,'X' if parametric else '${A}')
+    datacard = 'datacards_shape/MuMuTauTau/{}_HToAAH{}A{}{}.txt'.format(tag,h,'X' if parametric else '${A}',postscript)
 
     combineCommands = getCommands(**kwargs)
 
-    sample_dir = '/{}/{}/crab_projects/{}/{}/{}'.format(scratchDir,pwd.getpwuid(os.getuid())[0], jobName, tag, h)
+    sample_dir = '/{}/{}/crab_projects/{}/{}{}/{}'.format(scratchDir,pwd.getpwuid(os.getuid())[0], jobName, tag, postscript, h)
     python_mkdir(sample_dir)
 
     # create submit dir
@@ -161,7 +169,7 @@ def submitLimitCrab(tag,h,amasses,**kwargs):
     bashScript += 'echo $files\n'
     bashScript += 'for A in $files; do\n'
     for cc in combineCommands:
-        bashScript += cc.format(datacard=datacard,h=h,a=a,tag=tag)+'\n'
+        bashScript += cc.format(datacard=datacard,h=h,a=a,tag=tag,postscript=postscript)+'\n'
     bashScript += 'done\n'
     bashScript += """echo '''<FrameworkJobReport>\
 <ReadBranches>\n
@@ -234,6 +242,7 @@ def submitGridCrab(tag,h,amasses,**kwargs):
     jobName = kwargs.get('jobName',None)
     parametric = kwargs.get('parametric',False)
     pointsPerJob = kwargs.get('pointsPerJob',1)
+    postscript = kwargs.get('postscript','')
     toys = 5000
     rMin = 0.01
     rMax = 1.00
@@ -241,10 +250,10 @@ def submitGridCrab(tag,h,amasses,**kwargs):
 
     a = '${A}'
 
-    datacard = 'datacards_shape/MuMuTauTau/mmmt_{}_HToAAH{}A{}.txt'.format(tag,h,'X' if parametric else '${A}')
+    datacard = 'datacards_shape/MuMuTauTau/{}_HToAAH{}A{}{}.txt'.format(tag,h,'X' if parametric else '${A}',postscript)
 
     for a in amasses:
-        sample_dir = '/{}/{}/crab_projects/{}/{}/{}/{}'.format(scratchDir,pwd.getpwuid(os.getuid())[0], jobName, tag, h, a)
+        sample_dir = '/{}/{}/crab_projects/{}/{}{}/{}/{}'.format(scratchDir,pwd.getpwuid(os.getuid())[0], jobName, tag, postscript, h, a)
         python_mkdir(sample_dir)
 
 
@@ -257,7 +266,7 @@ def submitGridCrab(tag,h,amasses,**kwargs):
         workspace = '{}/workspace.root'.format(sample_dir)
 
         # create workspace
-        command = 'text2workspace.py {datacard} -m {a} -o {workspace}'.format(datacard=datacard,a=a,workspace=workspace)
+        command = 'text2workspace.py {datacard} -m {h} -o {workspace}'.format(datacard=datacard,h=h,a=a,workspace=workspace)
         os.system(command)
 
         # setup crab customization
@@ -273,10 +282,11 @@ def submitGridCrab(tag,h,amasses,**kwargs):
 
         # get combine command
         command = 'combineTool.py -d {workspace} -M HybridNew'\
-                  +' --freq --LHCmode LHC-limits --clsAcc 0 -T {toys} -s -1'\
+                  +' --LHCmode LHC-limits -T {toys}'\
                   +' --singlePoint 0.5:1.0:0.05,0.1:0.5:0.01,0.005:0.1:0.005 --saveToys --fullBToys --saveHybridResult'\
-                  +' -m {a} --job-mode crab3 --task-name {jobName} --custom-crab {custom} --merge {n}'
-        command = command.format(workspace=workspace,toys=toys,a=a,jobName=jobName,custom=custom,n=pointsPerJob)
+                  +' -m {h} --setParameters MA={a} --freezeParameters=MA'\
+                  +' --job-mode crab3 --task-name {jobName} --custom-crab {custom} --merge {n}'
+        command = command.format(workspace=workspace,toys=toys,a=a,h=h,jobName=jobName,custom=custom,n=pointsPerJob)
 
         # submit job
         os.system(command)
@@ -290,7 +300,9 @@ def parse_command_line(argv):
     parser.add_argument('tag', nargs='?',type=str,default='',help='MuMuTauTau tag')
     parser.add_argument('--mh', nargs='?',type=int,default=125,help='Higgs mass')
     parser.add_argument('--ma', nargs='?',type=int,default=15,help='Pseudoscalar mass')
+    parser.add_argument('--postscript', nargs='?',type=str,default='',help='Postscript')
     parser.add_argument('--parametric',action='store_true',help='Use extended a masses')
+    parser.add_argument('--unblind',action='store_true',help='Unblind')
     # job submission
     parser.add_argument('--jobName', nargs='?',type=str,default='',help='Jobname for submission')
     parser.add_argument('--submit',action='store_true',help='Submit Full CLs')
@@ -320,9 +332,9 @@ def main(argv=None):
         if args.parametric: amasses = [x*0.1 for x in range(36,211,1)]
         command = submitLimitCrab if args.crab else submitLimit
         if args.grid: command = submitGridCrab
-        command(args.tag,args.mh,amasses,dryrun=args.dryrun,jobName=args.jobName,parametric=args.parametric,pointsPerJob=args.pointsPerJob)
+        command(args.tag,args.mh,amasses,dryrun=args.dryrun,jobName=args.jobName,parametric=args.parametric,pointsPerJob=args.pointsPerJob,blind=not args.unblind,postscript=args.postscript)
     else:
-        runLimit(args.tag,args.mh,args.ma,dryrun=args.dryrun,parametric=args.parametric)
+        runLimit(args.tag,args.mh,args.ma,dryrun=args.dryrun,parametric=args.parametric,blind=not args.unblind,postscript=args.postscript)
 
     return 0
 
